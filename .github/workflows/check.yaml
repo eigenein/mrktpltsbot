@@ -46,6 +46,6 @@ jobs:
           CROSS_CONTAINER_OPTS: "--network=host"
 
       - name: 💬 Clippy
-        run: cross clippy --target=aarch64-unknown-linux-gnu --test
+        run: cross clippy --target=aarch64-unknown-linux-gnu --tests
         if: github.event_name == 'pull_request'
         continue-on-error: true
