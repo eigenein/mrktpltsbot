@@ -1,6 +1,5 @@
 use std::{borrow::Cow, io::stderr};
 
-use anyhow::Context;
 use clap::crate_version;
 use sentry::{integrations::tracing::EventFilter, ClientInitGuard, ClientOptions, SessionMode};
 use tracing::Level;
@@ -28,8 +27,7 @@ pub fn init(
         .span_filter(|metadata| metadata.level() >= &Level::DEBUG);
     info!(is_sentry_enabled = sentry_guard.is_enabled(), "🥅");
 
-    let format_filter = EnvFilter::try_from_default_env()
-        .context("failed to parse the logging environment variable")?;
+    let format_filter = EnvFilter::try_from_default_env().unwrap_or_default();
     let (stderr, stderr_guard) = tracing_appender::non_blocking(stderr());
     let format_layer = tracing_subscriber::fmt::layer()
         .with_writer(stderr)
