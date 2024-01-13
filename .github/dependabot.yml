@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: "daily"
+    commit-message:
+      prefix: "⬆️"
+    reviewers:
+      - "eigenein"
+    groups:
+      all:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 0

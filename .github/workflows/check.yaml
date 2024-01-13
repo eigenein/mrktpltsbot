@@ -1,0 +1,55 @@
+name: 🧪 Check
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+    tags-ignore:
+      - '**'
+  pull_request:
+    branches:
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: 🧪 Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ✨ Set up the toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: aarch64-unknown-linux-gnu
+          override: true
+
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: ⚡️ Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: 🧪 Test
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: -- --include-ignored
+        env:
+          CROSS_CONTAINER_OPTS: "--network=host"
+
+      - name: 💬 Clippy
+        uses: actions-rs/clippy-check@v1
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        with:
+          use-cross: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --tests
