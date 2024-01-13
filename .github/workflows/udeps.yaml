@@ -21,27 +21,21 @@ jobs:
 
     steps:
       - name: ✨ Set up the toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          override: true
-
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: dtolnay/rust-toolchain@nightly
 
       - name: ⚡️ Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
+      - name: ✨ Set up B(inary)Install
+        uses: cargo-bins/cargo-binstall@main
+
       - name: ✨ Install udeps
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-udeps
+        run: cargo binstall cargo-udeps
+
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
 
       - name: ❓ Udeps
-        uses: actions-rs/cargo@v1
-        with:
-          command: udeps
+        run: cargo udeps

@@ -21,35 +21,31 @@ jobs:
 
     steps:
       - name: ✨ Set up the toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
-          target: aarch64-unknown-linux-gnu
-          override: true
-
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
+          targets: "aarch64-unknown-linux-gnu"
+          components: "clippy"
 
       - name: ⚡️ Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
+      - name: ✨ Set up B(inary)Install
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: ✨ Set up Cross
+        run: cargo binstall cross
+
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
       - name: 🧪 Test
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: test
-          args: -- --include-ignored
+        run: cross test -- --include-ignored
         env:
           CROSS_CONTAINER_OPTS: "--network=host"
 
       - name: 💬 Clippy
-        uses: actions-rs/clippy-check@v1
+        run: cross clippy --test
         if: github.event_name == 'pull_request'
         continue-on-error: true
-        with:
-          use-cross: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --tests
