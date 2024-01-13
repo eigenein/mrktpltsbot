@@ -41,11 +41,11 @@ jobs:
           cache-on-failure: true
 
       - name: 🧪 Test
-        run: cross test -- --include-ignored
+        run: cross test --target=aarch64-unknown-linux-gnu -- --include-ignored
         env:
           CROSS_CONTAINER_OPTS: "--network=host"
 
       - name: 💬 Clippy
-        run: cross clippy --test
+        run: cross clippy --target=aarch64-unknown-linux-gnu --test
         if: github.event_name == 'pull_request'
         continue-on-error: true

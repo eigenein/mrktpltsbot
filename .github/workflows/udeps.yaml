@@ -38,4 +38,4 @@ jobs:
           cache-on-failure: true
 
       - name: ❓ Udeps
-        run: cargo udeps
+        run: cargo +nightly udeps
