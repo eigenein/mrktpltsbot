@@ -30,7 +30,7 @@ jobs:
         uses: cargo-bins/cargo-binstall@main
 
       - name: ✨ Set up Cross
-        run: cargo binstall cross
+        run: cargo binstall --no-confirm cross
 
       - name: 📥 Checkout
         uses: actions/checkout@v4
