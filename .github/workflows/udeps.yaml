@@ -23,11 +23,6 @@ jobs:
       - name: ✨ Set up the toolchain
         uses: dtolnay/rust-toolchain@nightly
 
-      - name: ⚡️ Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-
       - name: ✨ Set up B(inary)Install
         uses: cargo-bins/cargo-binstall@main
 
@@ -36,6 +31,11 @@ jobs:
 
       - name: 📥 Checkout
         uses: actions/checkout@v4
+
+      - name: ⚡️ Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
 
       - name: ❓ Udeps
         run: cargo udeps
