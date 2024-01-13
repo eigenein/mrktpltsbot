@@ -1,6 +1,15 @@
-#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
-#[global_allocator]
-static ALLOCATOR: jemallocator::Jemalloc = jemallocator::Jemalloc;
+use clap::Parser;
 
-fn main() {}
+use crate::{cli::Cli, prelude::*};
+
+mod cli;
+mod prelude;
+mod tracing;
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+    let _tracing_guards = tracing::init(cli.sentry_dsn, cli.traces_sample_rate)?;
+    Ok(())
+}

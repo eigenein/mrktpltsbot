@@ -12,7 +12,12 @@ repository = "https://github.com/eigenein/mrktpltsbot"
 version = "0.4.0"
 
 [dependencies]
-jemallocator = "0.5.4"
+anyhow = "1.0.79"
+clap = { version = "4.4.16", features = ["cargo", "derive", "env"] }
+sentry = { version = "0.32.1", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "rustls", "tracing"] }
+tracing = "0.1.40"
+tracing-appender = "0.2.3"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [badges]
 is-it-maintained-issue-resolution = { repository = "eigenein/mrktpltsbot" }
