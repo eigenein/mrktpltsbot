@@ -48,13 +48,10 @@ pub fn init(
 }
 
 /// Convert successful results into `Some()`, and error results into `None` while also tracing them.
-pub fn to_option_traced<T>(result: Result<T>) -> Option<T> {
-    match result {
-        Ok(value) => Some(value),
-        Err(error) => {
-            capture_anyhow(&error);
-            error!("Error: {error:#}");
-            None
-        }
+pub fn traced_result<T>(result: Result<T>) -> Result<T> {
+    if let Err(error) = &result {
+        error!("Error: {error:#}");
+        capture_anyhow(error);
     }
+    result
 }

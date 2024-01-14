@@ -707,6 +707,7 @@ dependencies = [
  "clap",
  "dotenvy",
  "futures",
+ "pid",
  "reqwest",
  "sentry",
  "serde",
@@ -783,6 +784,15 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
+
+[[package]]
+name = "pid"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c931ef9756cd5e3fa3d395bfe09df4dfa6f0612c6ca8f6b12927d17ca34e36"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "pin-project-lite"

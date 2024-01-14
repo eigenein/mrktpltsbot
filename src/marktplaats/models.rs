@@ -8,6 +8,9 @@ pub struct SearchResponse {
 
 #[derive(Deserialize)]
 pub struct Listing {
+    #[serde(rename = "itemId")]
+    pub item_id: String,
+
     pub title: String,
 
     pub description: String,
@@ -18,7 +21,7 @@ pub struct Listing {
     #[serde(rename = "priceInfo")]
     pub price: PriceInfo,
 
-    #[serde(rename = "pictures")]
+    #[serde(rename = "pictures", default)]
     pub pictures: Vec<Picture>,
 }
 

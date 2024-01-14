@@ -10,6 +10,7 @@ use crate::{
 
 pub mod models;
 
+#[derive(Clone)]
 pub struct Marktplaats(reqwest::Client);
 
 impl Marktplaats {

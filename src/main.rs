@@ -1,5 +1,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
+use std::time::Duration;
+
 use clap::Parser;
 use sentry::SessionMode;
 
@@ -13,6 +15,7 @@ mod cli;
 mod crawler;
 mod marktplaats;
 mod prelude;
+mod throttler;
 mod tracing;
 
 #[tokio::main]
@@ -25,8 +28,7 @@ async fn main() -> Result {
         Command::Crawler => {
             let _tracing_guards =
                 tracing::init(cli.sentry_dsn, SessionMode::Application, cli.traces_sample_rate)?;
-            Crawler::new()?.run().await;
+            Crawler::new(Duration::from_millis(200))?.run().await
         }
     }
-    Ok(())
 }
