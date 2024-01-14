@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use reqwest::Url;
 use tracing::instrument;
 
@@ -6,15 +8,19 @@ use crate::{
     prelude::*,
 };
 
-mod models;
+pub mod models;
 
 pub struct Marktplaats(reqwest::Client);
 
 impl Marktplaats {
+    const TIMEOUT: Duration = Duration::from_secs(10);
+
     pub fn new() -> Result<Self> {
         Ok(Self(
             reqwest::ClientBuilder::new()
                 .user_agent("Googlebot/2.1 (+http://www.google.com/bot.html)")
+                .connect_timeout(Self::TIMEOUT)
+                .timeout(Self::TIMEOUT)
                 .build()
                 .context("failed to build Marktplaats client")?,
         ))
@@ -23,7 +29,7 @@ impl Marktplaats {
     /// Search for a single listing.
     ///
     /// If multiple listings match the query, only the first one is returned.
-    #[instrument(skip_all, level = "debug", fields(query))]
+    #[instrument(skip_all, fields(query = query))]
     pub async fn find_one(&self, query: &str) -> Result<Option<Listing>> {
         let url = Url::parse_with_params(
             "https://www.marktplaats.nl/lrp/api/search?limit=1",
