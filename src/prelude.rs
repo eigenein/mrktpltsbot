@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 pub use anyhow::{anyhow, Context, Error};
 pub use tracing::{debug, error, info, warn};
 

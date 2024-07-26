@@ -1,37 +1,65 @@
 use chrono::{DateTime, Local};
-use reqwest::Url;
 use serde::Deserialize;
 
 use crate::prelude::*;
 
-#[derive(Deserialize)]
-pub struct SearchResponse {
-    pub listings: Vec<SearchListing>,
+#[must_use]
+pub struct Marktplaats(pub reqwest::Client);
+
+impl Marktplaats {
+    /// Search Marktplaats.
+    pub async fn search(&self, query: &str, limit: u32) -> Result<SearchResponse> {
+        info!(query, "🔎 Searching…");
+        self.0
+            .get("https://www.marktplaats.nl/lrp/api/search?offset=0&sortBy=SORT_INDEX&sortOrder=DECREASING")
+            .query(&[("query", query)])
+            .query(&[("limit", limit)])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+            .with_context(|| format!("failed to search `{query}`"))
+    }
 }
 
 #[derive(Deserialize)]
-pub struct SearchListing {
+pub struct SearchResponse {
+    pub listings: Vec<Listing>,
+}
+
+#[derive(Deserialize)]
+pub struct Listing {
+    /// Marktplaats item ID, looks like `m2137081815`.
     #[serde(rename = "itemId")]
     pub item_id: String,
 
+    /// Advertisement title.
     pub title: String,
 
+    /// Advertisement description body.
     pub description: String,
 
+    /// Most likely, the creation timestamp.
+    #[serde(rename = "date")]
+    pub timestamp: DateTime<Local>,
+
+    /// Variable quality images.
     #[serde(default, rename = "pictures")]
     pub pictures: Vec<Picture>,
 
+    /// Low-quality image URLs.
+    #[serde(default, rename = "imageUrls")]
+    pub image_urls: Vec<String>,
+
     #[serde(rename = "priceInfo")]
     pub price: PriceInfo,
-
-    #[serde(rename = "priorityProduct")]
-    pub priority_product: PriorityProduct,
 
     #[serde(rename = "vipUrl")]
     pub url: String,
 }
 
-impl SearchListing {
+impl Listing {
     pub fn image_urls(&self) -> impl Iterator<Item = &str> {
         self.pictures.iter().filter_map(|picture| {
             picture
@@ -46,7 +74,7 @@ impl SearchListing {
 #[derive(Deserialize)]
 pub struct PriceInfo {
     #[serde(rename = "priceCents")]
-    pub cents: i32,
+    pub cents: u32,
 
     #[serde(rename = "priceType")]
     pub type_: PriceType,
@@ -86,6 +114,7 @@ pub enum PriceType {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(clippy::struct_field_names)]
 pub struct Picture {
     #[serde(rename = "extraExtraLargeUrl", default)]
     pub extra_large_url: Option<String>,
@@ -95,37 +124,6 @@ pub struct Picture {
 
     #[serde(rename = "mediumUrl", default)]
     pub medium_url: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub enum PriorityProduct {
-    #[serde(rename = "NONE")]
-    None,
-
-    #[serde(rename = "DAGTOPPER")]
-    DayTopper,
-}
-
-#[must_use]
-pub struct Marktplaats(pub reqwest::Client);
-
-impl Marktplaats {
-    /// Search Marktplaats.
-    pub async fn search(&self, query: &str, limit: &str) -> Result<SearchResponse> {
-        info!("Searching `{query}`…");
-        let url = Url::parse_with_params(
-            "https://www.marktplaats.nl/lrp/api/search?offset=0&sortBy=SORT_INDEX&sortOrder=DECREASING",
-            &[("query", query), ("limit", limit)],
-        )?;
-        self.0
-            .get(url)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await
-            .with_context(|| format!("failed to search `{query}`"))
-    }
 }
 
 #[cfg(test)]
