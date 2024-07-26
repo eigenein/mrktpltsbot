@@ -1,4 +1,6 @@
+use chrono::{DateTime, Local};
 use reqwest::Url;
+use serde::Deserialize;
 
 use crate::prelude::*;
 
@@ -104,19 +106,26 @@ pub enum PriorityProduct {
     DayTopper,
 }
 
-/// Search Marktplaats.
-pub async fn search(query: &str, limit: &str) -> Result<SearchResponse> {
-    info!("Searching `{}`…", query);
-    let url = Url::parse_with_params(
-        "https://www.marktplaats.nl/lrp/api/search?offset=0&sortBy=SORT_INDEX&sortOrder=DECREASING",
-        &[("query", query), ("limit", limit)],
-    )?;
-    Ok(retry_notify(
-        ExponentialBackoff::default(),
-        || async { Ok(CLIENT.get(url.clone()).send().await?.error_for_status()?.json().await?) },
-        |error, _| log_error(error),
-    )
-    .await?)
+#[must_use]
+pub struct Marktplaats(pub reqwest::Client);
+
+impl Marktplaats {
+    /// Search Marktplaats.
+    pub async fn search(&self, query: &str, limit: &str) -> Result<SearchResponse> {
+        info!("Searching `{query}`…");
+        let url = Url::parse_with_params(
+            "https://www.marktplaats.nl/lrp/api/search?offset=0&sortBy=SORT_INDEX&sortOrder=DECREASING",
+            &[("query", query), ("limit", limit)],
+        )?;
+        self.0
+            .get(url)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+            .with_context(|| format!("failed to search `{query}`"))
+    }
 }
 
 #[cfg(test)]
