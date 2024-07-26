@@ -8,7 +8,7 @@ license = "MIT"
 publish = true
 readme = "README.md"
 repository = "https://github.com/eigenein/mrktpltsbot"
-version = "0.4.3"
+version = "0.5.0"
 
 [badges]
 is-it-maintained-issue-resolution = { repository = "eigenein/mrktpltsbot" }
@@ -19,8 +19,9 @@ split-debuginfo = "unpacked"
 
 [profile.release]
 codegen-units = 1
-debug = true
-lto = "fat"
+debug = "none"
+lto = "thin"
+strip = true
 
 [lints.clippy]
 

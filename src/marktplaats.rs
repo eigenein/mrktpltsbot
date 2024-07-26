@@ -30,9 +30,8 @@ pub struct SearchListing {
 }
 
 impl SearchListing {
-    #[must_use]
-    pub fn image_url(&self) -> Option<&str> {
-        self.pictures.first().and_then(|picture| {
+    pub fn image_urls(&self) -> impl Iterator<Item = &str> {
+        self.pictures.iter().filter_map(|picture| {
             picture
                 .extra_large_url
                 .as_deref()

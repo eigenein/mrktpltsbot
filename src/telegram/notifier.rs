@@ -1,8 +1,4 @@
-use crate::{
-    prelude::*,
-    redis::pop_notification,
-    telegram::{Telegram, MARKDOWN_V2},
-};
+use crate::{prelude::*, redis::pop_notification, telegram::Telegram};
 
 const ONE_SECOND: Duration = Duration::from_secs(1);
 
@@ -23,23 +19,33 @@ impl Notifier {
             let notification = pop_notification(&mut self.redis).await?;
             info!("Notification to the chat #{}.", notification.chat_id);
 
-            if let Some(image_url) = notification.image_url {
-                self.telegram
-                    .send_photo(
-                        notification.chat_id,
-                        &image_url,
-                        Some(&notification.text),
-                        MARKDOWN_V2,
-                        notification.reply_markup,
-                    )
-                    .await
-                    .log_result();
+            #[allow(clippy::if_not_else)]
+            if !notification.image_urls.is_empty() {
+                if notification.image_urls.len() == 1 {
+                    self.telegram
+                        .send_photo(
+                            notification.chat_id,
+                            &notification.image_urls[0],
+                            &notification.text,
+                            notification.reply_markup,
+                        )
+                        .await
+                        .log_result();
+                } else {
+                    self.telegram
+                        .send_media_group(
+                            notification.chat_id,
+                            &notification.text,
+                            notification.image_urls,
+                        )
+                        .await
+                        .log_result();
+                }
             } else {
                 self.telegram
                     .send_message(
                         notification.chat_id,
                         &notification.text,
-                        MARKDOWN_V2,
                         notification.reply_markup,
                     )
                     .await

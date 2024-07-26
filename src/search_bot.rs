@@ -91,12 +91,15 @@ pub async fn push_notification(
     if let Some(subscription_id) = subscription_id {
         buttons.push(InlineKeyboardButton::new_unsubscribe_button(subscription_id, None));
     }
-    crate::redis::push_notification(redis, Notification {
-        chat_id,
-        text: format_listing_text(listing),
-        image_url: listing.image_url().map(ToString::to_string),
-        reply_markup: Some(buttons.into()),
-    })
+    crate::redis::push_notification(
+        redis,
+        Notification {
+            chat_id,
+            text: format_listing_text(listing),
+            image_urls: listing.image_urls().map(ToString::to_string).collect(),
+            reply_markup: Some(buttons.into()),
+        },
+    )
     .await?;
     Ok(())
 }

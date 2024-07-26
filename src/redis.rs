@@ -24,8 +24,8 @@ const SEEN_TTL_SECS: u64 = 30 * 24 * 60 * 60;
 pub struct Notification {
     pub chat_id: i64,
     pub text: String,
-    pub image_url: Option<String>,
     pub reply_markup: Option<ReplyMarkup>,
+    pub image_urls: Vec<String>,
 }
 
 /// Open the Redis connection.
