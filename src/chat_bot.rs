@@ -76,7 +76,7 @@ impl ChatBot {
         } else {
             warn!("Forbidden chat: {}.", chat_id);
             self.telegram
-                .send_message(chat_id, &format!("⚠️ *Forbidden*\n\nAsk the administrator to add the chat ID `{chat_id}` to the allowed list\\."), Some("MarkdownV2"), None)
+                .send_message(chat_id, &format!("⚠️ *Forbidden*\n\nAsk the administrator to add the chat ID `{chat_id}` to the allowed list\\."), None)
                 .await?;
         }
 
@@ -114,7 +114,6 @@ impl ChatBot {
                     escape_markdown_v2(query),
                     subscription_count,
                 ),
-                MARKDOWN_V2,
                 Into::<ReplyMarkup>::into(vec![
                     vec![InlineKeyboardButton::new_unsubscribe_button(
                         subscription_id,
@@ -136,7 +135,6 @@ impl ChatBot {
                 &format!(
                     "☑️ Unsubscribed\\!\n\nThere\\'re *{subscription_count}* active subscriptions now\\."
                 ),
-                MARKDOWN_V2,
                 Into::<ReplyMarkup>::into(vec![
                     vec![InlineKeyboardButton::new_subscribe_button(&query)],
                     vec![InlineKeyboardButton::new_unsubscribe_list_button()],
@@ -161,7 +159,6 @@ impl ChatBot {
             .send_message(
                 chat_id,
                 "Here is the list of subscriptions from *all the users*:",
-                MARKDOWN_V2,
                 Into::<ReplyMarkup>::into(buttons),
             )
             .await?;
@@ -181,7 +178,6 @@ impl ChatBot {
             .send_message(
                 chat_id,
                 &format!("🎲 Search *{}*?", escape_markdown_v2(text)),
-                MARKDOWN_V2,
                 Into::<ReplyMarkup>::into(vec![
                     InlineKeyboardButton::new_search_preview_button(text),
                     InlineKeyboardButton::new_subscribe_button(text),

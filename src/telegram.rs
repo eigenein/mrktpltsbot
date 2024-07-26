@@ -54,7 +54,6 @@ impl Telegram {
         &self,
         chat_id: i64,
         text: &str,
-        parse_mode: Option<&str>,
         reply_markup: RM,
     ) -> Result<Message> {
         self.call(
@@ -62,7 +61,7 @@ impl Telegram {
             &json!({
                 "chat_id": chat_id,
                 "text": text,
-                "parse_mode": parse_mode,
+                "parse_mode": MARKDOWN_V2,
                 "reply_markup": serialize_reply_markup(&reply_markup.into())?,
             }),
             None,
@@ -75,8 +74,7 @@ impl Telegram {
         &self,
         chat_id: i64,
         photo: &str,
-        caption: Option<&str>,
-        parse_mode: Option<&str>,
+        caption: &str,
         reply_markup: RM,
     ) -> Result<Message> {
         self.call(
@@ -85,12 +83,42 @@ impl Telegram {
                 "chat_id": chat_id,
                 "photo": photo,
                 "caption": caption,
-                "parse_mode": parse_mode,
+                "parse_mode": MARKDOWN_V2,
                 "reply_markup": serialize_reply_markup(&reply_markup.into())?,
             }),
             None,
         )
         .await
+    }
+
+    /// <https://core.telegram.org/bots/api#sendmediagroup>
+    pub async fn send_media_group(
+        &self,
+        chat_id: i64,
+        caption: &str,
+        media: impl IntoIterator<Item = String>,
+    ) -> Result {
+        // https://core.telegram.org/bots/api#inputmediaphoto
+        let media: Vec<serde_json::Value> = media
+            .into_iter()
+            .enumerate()
+            .map(|(i, media)| {
+                json!({
+                    "type": "photo",
+                    "media": media,
+                    "parse_mode": MARKDOWN_V2,
+                    "caption": if i == 0 { Some(caption) } else { None },
+                })
+            })
+            .collect();
+        let payload = json!({
+            "chat_id": chat_id,
+            "media": media,
+        });
+        self.call("sendMediaGroup", &payload, None)
+            .await
+            .context("failed to send the media group")?;
+        Ok(())
     }
 
     pub async fn answer_callback_query(&self, callback_query_id: &str) -> Result<bool> {

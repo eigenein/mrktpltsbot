@@ -24,8 +24,8 @@ const SEEN_TTL_SECS: u64 = 30 * 24 * 60 * 60;
 pub struct Notification {
     pub chat_id: i64,
     pub text: String,
-    pub image_url: Option<String>,
     pub reply_markup: Option<ReplyMarkup>,
+    pub image_urls: Vec<String>,
 }
 
 /// Open the Redis connection.
@@ -119,7 +119,7 @@ pub async fn get_subscription_details<C: AsyncCommands>(
     subscription_id: i64,
 ) -> Result<(i64, String)> {
     Ok(redis::cmd("HMGET")
-        .arg(&get_subscription_details_key(subscription_id))
+        .arg(get_subscription_details_key(subscription_id))
         .arg("chat_id")
         .arg("query")
         .query_async(connection)
