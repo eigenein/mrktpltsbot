@@ -1,34 +1,34 @@
 //! Provides the global `Client` instance.
 
-use crate::prelude::*;
-use lazy_static::lazy_static;
+use std::time::Duration;
+
+use clap::crate_version;
 use reqwest::{
+    header,
     header::{HeaderMap, HeaderValue},
     Client,
 };
 
-const USER_AGENT: &str = concat!(
-    "mrktpltsbot / ",
-    crate_version!(),
-    " (Rust; https://github.com/eigenein/mrktpltsbot)",
-);
-const TIMEOUT: Duration = Duration::from_secs(30);
-const POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(600);
+use crate::prelude::*;
 
-lazy_static! {
-    pub static ref CLIENT: Client = Client::builder()
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
+
+pub fn build_client() -> Result<Client> {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::USER_AGENT,
+        HeaderValue::from_static(concat!(
+            "mrktpltsbot / ",
+            crate_version!(),
+            " (Rust; https://github.com/eigenein/mrktpltsbot)",
+        )),
+    );
+    Client::builder()
         .gzip(true)
         .use_rustls_tls()
-        .default_headers({
-            let mut headers = HeaderMap::new();
-            headers.insert(
-                reqwest::header::USER_AGENT,
-                HeaderValue::from_static(USER_AGENT),
-            );
-            headers
-        })
-        .timeout(TIMEOUT)
-        .pool_idle_timeout(Some(POOL_IDLE_TIMEOUT))
+        .default_headers(headers)
+        .timeout(DEFAULT_TIMEOUT)
+        .pool_idle_timeout(Some(Duration::from_secs(600)))
         .build()
-        .unwrap();
+        .context("failed to build an HTTP client")
 }
