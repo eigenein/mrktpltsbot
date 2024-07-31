@@ -3,7 +3,7 @@ use serde::Deserialize;
 /// This object represents a Telegram user or bot.
 ///
 /// See also: <https://core.telegram.org/bots/api#user>.
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[must_use]
 pub struct User {
     pub id: i64,
@@ -45,4 +45,10 @@ pub enum UpdatePayload {
 #[must_use]
 pub struct Message {
     pub message_id: u32,
+
+    #[serde(default)]
+    pub from: Option<User>,
+
+    #[serde(default)]
+    pub text: String,
 }
