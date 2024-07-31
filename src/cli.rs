@@ -13,7 +13,8 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Command {
     /// 🔎 Perform manual Marktplaats search.
-    Search {
+    #[clap(alias = "search")]
+    QuickSearch {
         /// Search query.
         query: String,
 

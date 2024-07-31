@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      timezone: "Europe/Amsterdam"
+    commit-message:
+      prefix: "⬆️"
+    open-pull-requests-limit: 0 # only security updates

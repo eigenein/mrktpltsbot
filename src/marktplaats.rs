@@ -8,8 +8,9 @@ pub struct Marktplaats(pub reqwest::Client);
 
 impl Marktplaats {
     /// Search Marktplaats.
+    #[instrument(skip_all, fields(query = query, limit = limit))]
     pub async fn search(&self, query: &str, limit: u32) -> Result<SearchResponse> {
-        info!(query, "🔎 Searching…");
+        info!("🔎 Searching…");
         self.0
             .get("https://www.marktplaats.nl/lrp/api/search?offset=0&sortBy=SORT_INDEX&sortOrder=DECREASING")
             .query(&[("query", query)])
@@ -31,7 +32,7 @@ pub struct SearchResponse {
 #[derive(Deserialize)]
 pub struct Listing {
     /// Marktplaats item ID, looks like `m2137081815`.
-    #[serde(rename = "itemId")]
+    #[serde(alias = "itemId")]
     pub item_id: String,
 
     /// Advertisement title.
@@ -41,22 +42,34 @@ pub struct Listing {
     pub description: String,
 
     /// Most likely, the creation timestamp.
-    #[serde(rename = "date")]
+    #[serde(alias = "date")]
     pub timestamp: DateTime<Local>,
 
     /// Variable quality images.
-    #[serde(default, rename = "pictures")]
+    #[serde(default, alias = "pictures")]
     pub pictures: Vec<Picture>,
 
     /// Low-quality image URLs.
-    #[serde(default, rename = "imageUrls")]
+    #[serde(default, alias = "imageUrls")]
     pub image_urls: Vec<String>,
 
-    #[serde(rename = "priceInfo")]
+    #[serde(alias = "priceInfo")]
     pub price: PriceInfo,
 
-    #[serde(rename = "vipUrl")]
+    #[serde(alias = "vipUrl")]
     pub url: String,
+
+    #[serde(alias = "sellerInformation")]
+    pub seller: SellerInformation,
+}
+
+#[derive(Deserialize)]
+pub struct SellerInformation {
+    #[serde(alias = "sellerId")]
+    pub id: u32,
+
+    #[serde(alias = "sellerName")]
+    pub name: String,
 }
 
 impl Listing {
@@ -73,56 +86,56 @@ impl Listing {
 
 #[derive(Deserialize)]
 pub struct PriceInfo {
-    #[serde(rename = "priceCents")]
+    #[serde(alias = "priceCents")]
     pub cents: u32,
 
-    #[serde(rename = "priceType")]
+    #[serde(alias = "priceType")]
     pub type_: PriceType,
 }
 
 #[derive(Deserialize, Debug)]
 pub enum PriceType {
     /// Fixed price, bidding are not allowed.
-    #[serde(rename = "FIXED")]
+    #[serde(alias = "FIXED")]
     Fixed,
 
-    #[serde(rename = "ON_REQUEST")]
+    #[serde(alias = "ON_REQUEST")]
     OnRequest,
 
     /// Price, bids are allowed.
-    #[serde(rename = "MIN_BID")]
+    #[serde(alias = "MIN_BID")]
     MinBid,
 
-    #[serde(rename = "SEE_DESCRIPTION")]
+    #[serde(alias = "SEE_DESCRIPTION")]
     SeeDescription,
 
-    #[serde(rename = "NOTK")]
+    #[serde(alias = "NOTK")]
     ToBeAgreed,
 
-    #[serde(rename = "RESERVED")]
+    #[serde(alias = "RESERVED")]
     Reserved,
 
     /// No asking price, only bidding.
-    #[serde(rename = "FAST_BID")]
+    #[serde(alias = "FAST_BID")]
     FastBid,
 
-    #[serde(rename = "FREE")]
+    #[serde(alias = "FREE")]
     Free,
 
-    #[serde(rename = "EXCHANGE")]
+    #[serde(alias = "EXCHANGE")]
     Exchange,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(clippy::struct_field_names)]
 pub struct Picture {
-    #[serde(rename = "extraExtraLargeUrl", default)]
+    #[serde(alias = "extraExtraLargeUrl", default)]
     pub extra_large_url: Option<String>,
 
-    #[serde(rename = "largeUrl", default)]
+    #[serde(alias = "largeUrl", default)]
     pub large_url: Option<String>,
 
-    #[serde(rename = "mediumUrl", default)]
+    #[serde(alias = "mediumUrl", default)]
     pub medium_url: Option<String>,
 }
 

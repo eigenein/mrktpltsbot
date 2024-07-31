@@ -1,0 +1,9 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "group:allNonMajor",
+    "schedule:monthly"
+  ],
+  "commitMessagePrefix": "⬆️",
+  "timezone": "Europe/Amsterdam"
+}

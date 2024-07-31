@@ -28,7 +28,7 @@ pub fn build_client() -> Result<Client> {
         .use_rustls_tls()
         .default_headers(headers)
         .timeout(DEFAULT_TIMEOUT)
-        .pool_idle_timeout(Some(Duration::from_secs(600)))
+        .pool_idle_timeout(Some(Duration::from_secs(300)))
         .build()
         .context("failed to build an HTTP client")
 }
