@@ -1,10 +1,11 @@
-use std::time::Duration;
+pub mod objects;
+pub mod requests;
 
 use monostate::MustBe;
 use reqwest::Client;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize};
 
-use crate::{client::DEFAULT_TIMEOUT, prelude::*};
+use crate::{prelude::*, telegram::requests::Request};
 
 #[must_use]
 pub struct Telegram {
@@ -89,35 +90,18 @@ pub struct ResponseParameters {
     pub retry_after_secs: Option<u32>,
 }
 
-pub trait Request: Serialize {
-    const METHOD_NAME: &'static str;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    type Response;
-
-    fn timeout(&self) -> Duration {
-        DEFAULT_TIMEOUT
+    #[test]
+    fn test_response_ok() -> Result {
+        assert_eq!(
+            Result::from(serde_json::from_str::<Response<u32>>(
+                r#"{"ok": true, "result": 42}"#
+            )?)?,
+            42
+        );
+        Ok(())
     }
-}
-
-/// A simple method for testing your bot's authentication token.
-///
-/// See also: <https://core.telegram.org/bots/api#getme>.
-#[derive(Serialize)]
-pub struct GetMe;
-
-impl Request for GetMe {
-    const METHOD_NAME: &'static str = "getMe";
-
-    type Response = User;
-}
-
-/// This object represents a Telegram user or bot.
-///
-/// See also: <https://core.telegram.org/bots/api#user>.
-#[derive(Deserialize)]
-pub struct User {
-    pub id: i64,
-
-    #[serde(default)]
-    pub username: Option<String>,
 }

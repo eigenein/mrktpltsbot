@@ -5,7 +5,10 @@ use crate::{
     client::build_client,
     marktplaats::Marktplaats,
     prelude::*,
-    telegram::{GetMe, Telegram},
+    telegram::{
+        requests::{GetMe, GetUpdates},
+        Telegram,
+    },
 };
 
 mod cli;
@@ -37,6 +40,21 @@ async fn fallible_main(cli: Cli) -> Result {
             info!(user.id, user.username);
             Ok(())
         }
+
+        Command::GetUpdates {
+            offset,
+            limit,
+            timeout_secs,
+            allowed_updates,
+        } => {
+            let request = GetUpdates {
+                offset,
+                limit,
+                timeout_secs,
+                allowed_updates,
+            };
+            get_updates(&Telegram::new(client, cli.bot_token), request).await
+        }
     }
 }
 
@@ -53,6 +71,14 @@ async fn quick_search(marktplaats: &Marktplaats, query: &str, limit: u32) -> Res
             seller_name = listing.seller.name,
             "🌠",
         );
+    }
+    Ok(())
+}
+
+#[instrument(skip_all)]
+async fn get_updates(telegram: &Telegram, request: GetUpdates) -> Result {
+    for update in telegram.call(request).await? {
+        info!(update.id, ?update.payload);
     }
     Ok(())
 }
