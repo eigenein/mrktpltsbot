@@ -5,14 +5,15 @@ use crate::{
     client::build_client,
     marktplaats::Marktplaats,
     prelude::*,
+    telegram::{GetMe, Telegram},
 };
 
 mod cli;
 mod client;
 mod logging;
 mod marktplaats;
-mod math;
 mod prelude;
+mod telegram;
 
 #[tokio::main]
 async fn main() -> Result {
@@ -25,10 +26,17 @@ async fn main() -> Result {
 
 async fn fallible_main(cli: Cli) -> Result {
     let client = build_client()?;
-    let marktplaats = Marktplaats(client);
 
     match cli.command {
-        Command::QuickSearch { query, limit } => quick_search(&marktplaats, &query, limit).await,
+        Command::QuickSearch { query, limit } => {
+            quick_search(&Marktplaats(client), &query, limit).await
+        }
+
+        Command::GetMe => {
+            let user = Telegram::new(client, cli.bot_token).call(GetMe).await?;
+            info!(user.id, user.username);
+            Ok(())
+        }
     }
 }
 
