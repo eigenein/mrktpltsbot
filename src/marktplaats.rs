@@ -66,7 +66,7 @@ pub struct Listing {
 #[derive(Deserialize)]
 pub struct SellerInformation {
     #[serde(alias = "sellerId")]
-    pub id: u32,
+    pub id: i32,
 
     #[serde(alias = "sellerName")]
     pub name: String,
