@@ -11,19 +11,20 @@ impl Marktplaats {
     /// Search Marktplaats.
     #[instrument(skip_all, fields(query = query, limit = limit))]
     pub async fn search(&self, query: &str, limit: u32) -> Result<SearchResponse> {
-        info!("🔎 Searching…");
         let response = self.0
             .get("https://www.marktplaats.nl/lrp/api/search?offset=0&sortBy=SORT_INDEX&sortOrder=DECREASING")
             .query(&[("query", query)])
             .query(&[("limit", limit)])
             .send()
-            .await?
+            .await
+            .with_context(|| format!("failed to search `{query}`"))?
             .error_for_status()?
             .text()
             .await
-            .with_context(|| format!("failed to search `{query}`"))?;
+            .with_context(|| format!("failed to read search response for `{query}`"))?;
         debug!(response);
-        serde_json::from_str(&response).context("failed to deserialize the response")
+        serde_json::from_str(&response)
+            .with_context(|| format!("failed to deserialize the search response for `{query}`"))
     }
 }
 

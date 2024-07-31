@@ -6,13 +6,16 @@ pub struct Cli {
     #[clap(long, env = "SENTRY_DSN")]
     pub sentry_dsn: Option<String>,
 
+    #[clap(long, env = "BOT_TOKEN")]
+    pub bot_token: String,
+
     #[command(subcommand)]
     pub command: Command,
 }
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// 🔎 Perform manual Marktplaats search.
+    /// Perform manual Marktplaats search.
     #[clap(alias = "search")]
     QuickSearch {
         /// Search query.
@@ -22,4 +25,7 @@ pub enum Command {
         #[clap(long, default_value = "1")]
         limit: u32,
     },
+
+    /// Test Telegram bot API token.
+    GetMe,
 }
