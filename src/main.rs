@@ -34,15 +34,14 @@ async fn fallible_main(cli: Cli) -> Result {
 
 #[instrument(skip_all)]
 async fn quick_search(marktplaats: &Marktplaats, query: &str, limit: u32) -> Result {
-    for listing in marktplaats.search(&query, limit).await?.listings {
+    for listing in marktplaats.search(query, limit).await?.listings {
         info!(
             id = listing.item_id,
             timestamp = %listing.timestamp,
             title = listing.title,
             n_pictures = listing.pictures.len(),
             n_image_urls = listing.image_urls.len(),
-            cents = listing.price.cents,
-            price_type = ?listing.price.type_,
+            price = ?listing.price,
             seller_name = listing.seller.name,
             "🌠",
         );
