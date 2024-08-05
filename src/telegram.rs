@@ -1,11 +1,11 @@
+pub mod methods;
 pub mod objects;
-pub mod requests;
 
 use monostate::MustBe;
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Deserialize};
 
-use crate::{prelude::*, telegram::requests::Request};
+use crate::{prelude::*, telegram::methods::Method};
 
 #[must_use]
 pub struct Telegram {
@@ -18,10 +18,10 @@ impl Telegram {
         Self { client, token }
     }
 
-    #[instrument(skip_all, fields(method = R::METHOD_NAME))]
+    #[instrument(skip_all, fields(method = R::NAME))]
     pub async fn call<R>(&self, request: R) -> Result<R::Response>
     where
-        R: Request,
+        R: Method,
         R::Response: DeserializeOwned,
     {
         let response = self
@@ -29,19 +29,19 @@ impl Telegram {
             .post(format!(
                 "https://api.telegram.org/bot{}/{}",
                 self.token,
-                R::METHOD_NAME
+                R::NAME
             ))
             .json(&request)
             .timeout(request.timeout())
             .send()
             .await
-            .with_context(|| format!("failed to call `{}`", R::METHOD_NAME))?
+            .with_context(|| format!("failed to call `{}`", R::NAME))?
             .text()
             .await
-            .with_context(|| format!("failed to read `{}` response", R::METHOD_NAME))?;
+            .with_context(|| format!("failed to read `{}` response", R::NAME))?;
         debug!(response);
         serde_json::from_str::<Response<R::Response>>(&response)
-            .with_context(|| format!("failed to deserialize `{}` response", R::METHOD_NAME))?
+            .with_context(|| format!("failed to deserialize `{}` response", R::NAME))?
             .into()
     }
 }

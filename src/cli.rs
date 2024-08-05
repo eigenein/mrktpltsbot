@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::telegram::requests::AllowedUpdate;
+use crate::telegram::methods::AllowedUpdate;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about, propagate_version = true)]
@@ -13,6 +13,30 @@ pub struct Cli {
 
     #[command(subcommand)]
     pub command: Command,
+}
+
+#[derive(Parser)]
+pub struct GetUpdates {
+    #[clap(long)]
+    pub offset: Option<u32>,
+
+    #[clap(long)]
+    pub limit: Option<u32>,
+
+    #[clap(long)]
+    pub timeout_secs: Option<u64>,
+
+    #[clap(long, value_delimiter = ',', num_args = 1..)]
+    pub allowed_updates: Option<Vec<AllowedUpdate>>,
+}
+
+#[derive(Parser)]
+pub struct SendMessage {
+    #[clap(long)]
+    pub chat_id: i64,
+
+    #[clap()]
+    pub html: String,
 }
 
 #[derive(Subcommand)]
@@ -32,17 +56,8 @@ pub enum Command {
     GetMe,
 
     /// Manually check out the bot updates.
-    GetUpdates {
-        #[clap(long)]
-        offset: Option<u32>,
+    GetUpdates(GetUpdates),
 
-        #[clap(long)]
-        limit: Option<u32>,
-
-        #[clap(long)]
-        timeout_secs: Option<u64>,
-
-        #[clap(long, value_delimiter = ',', num_args = 1..)]
-        allowed_updates: Option<Vec<AllowedUpdate>>,
-    },
+    /// Send out a test message.
+    SendMessage(SendMessage),
 }
