@@ -4,11 +4,13 @@ use serde::Serialize;
 
 use crate::{
     client::DEFAULT_TIMEOUT,
-    telegram::objects::{Update, User},
+    telegram::objects::{ChatId, Message, Update, User},
 };
 
-pub trait Request: Serialize {
-    const METHOD_NAME: &'static str;
+/// Telegram bot API method.
+pub trait Method: Serialize {
+    /// Method name.
+    const NAME: &'static str;
 
     type Response;
 
@@ -24,8 +26,8 @@ pub trait Request: Serialize {
 #[must_use]
 pub struct GetMe;
 
-impl Request for GetMe {
-    const METHOD_NAME: &'static str = "getMe";
+impl Method for GetMe {
+    const NAME: &'static str = "getMe";
 
     type Response = User;
 }
@@ -33,7 +35,7 @@ impl Request for GetMe {
 /// [Update][1] types that the client wants to listen to.
 ///
 /// [1]: https://core.telegram.org/bots/api#update
-#[derive(Clone, Serialize, clap::ValueEnum)]
+#[derive(Copy, Clone, Serialize, clap::ValueEnum)]
 #[must_use]
 pub enum AllowedUpdate {
     #[serde(rename = "message")]
@@ -63,12 +65,37 @@ pub struct GetUpdates {
     pub allowed_updates: Option<Vec<AllowedUpdate>>,
 }
 
-impl Request for GetUpdates {
-    const METHOD_NAME: &'static str = "getUpdates";
+impl Method for GetUpdates {
+    const NAME: &'static str = "getUpdates";
 
     type Response = Vec<Update>;
 
     fn timeout(&self) -> Duration {
         DEFAULT_TIMEOUT + Duration::from_secs(self.timeout_secs.unwrap_or_default())
     }
+}
+
+#[derive(Serialize)]
+#[must_use]
+pub enum ParseMode {
+    /// [HTML style][1].
+    ///
+    /// [1]: https://core.telegram.org/bots/api#html-style
+    #[serde(rename = "HTML")]
+    Html,
+}
+
+#[derive(Serialize)]
+#[must_use]
+pub struct SendMessage {
+    pub chat_id: ChatId,
+    pub text: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parse_mode: Option<ParseMode>,
+}
+
+impl Method for SendMessage {
+    const NAME: &'static str = "sendMessage";
+    type Response = Message;
 }

@@ -6,7 +6,8 @@ use crate::{
     marktplaats::Marktplaats,
     prelude::*,
     telegram::{
-        requests::{GetMe, GetUpdates},
+        methods::{GetMe, GetUpdates, ParseMode, SendMessage},
+        objects::ChatId,
         Telegram,
     },
 };
@@ -29,56 +30,56 @@ async fn main() -> Result {
 
 async fn fallible_main(cli: Cli) -> Result {
     let client = build_client()?;
+    let marktplaats = Marktplaats(client.clone());
+    let telegram = Telegram::new(client, cli.bot_token);
 
     match cli.command {
         Command::QuickSearch { query, limit } => {
-            quick_search(&Marktplaats(client), &query, limit).await
+            for listing in marktplaats.search(&query, limit).await?.listings {
+                info!(
+                    id = listing.item_id,
+                    timestamp = %listing.timestamp,
+                    title = listing.title,
+                    n_pictures = listing.pictures.len(),
+                    n_image_urls = listing.image_urls.len(),
+                    price = ?listing.price,
+                    seller_name = listing.seller.name,
+                    "🌠",
+                );
+            }
+            Ok(())
         }
 
         Command::GetMe => {
-            let user = Telegram::new(client, cli.bot_token).call(GetMe).await?;
+            let user = telegram.call(GetMe).await?;
             info!(user.id, user.username);
             Ok(())
         }
 
-        Command::GetUpdates {
-            offset,
-            limit,
-            timeout_secs,
-            allowed_updates,
-        } => {
+        Command::GetUpdates(args) => {
             let request = GetUpdates {
-                offset,
-                limit,
-                timeout_secs,
-                allowed_updates,
+                offset: args.offset,
+                limit: args.limit,
+                timeout_secs: args.timeout_secs,
+                allowed_updates: args.allowed_updates,
             };
-            get_updates(&Telegram::new(client, cli.bot_token), request).await
+            let updates = telegram.call(request).await?;
+            info!(n_updates = updates.len());
+            for update in updates {
+                info!(update.id, ?update.payload);
+            }
+            Ok(())
+        }
+
+        Command::SendMessage(args) => {
+            let request = SendMessage {
+                chat_id: ChatId::Integer(args.chat_id),
+                parse_mode: Some(ParseMode::Html),
+                text: args.html,
+            };
+            let message = telegram.call(request).await?;
+            info!(message.id);
+            Ok(())
         }
     }
-}
-
-#[instrument(skip_all)]
-async fn quick_search(marktplaats: &Marktplaats, query: &str, limit: u32) -> Result {
-    for listing in marktplaats.search(query, limit).await?.listings {
-        info!(
-            id = listing.item_id,
-            timestamp = %listing.timestamp,
-            title = listing.title,
-            n_pictures = listing.pictures.len(),
-            n_image_urls = listing.image_urls.len(),
-            price = ?listing.price,
-            seller_name = listing.seller.name,
-            "🌠",
-        );
-    }
-    Ok(())
-}
-
-#[instrument(skip_all)]
-async fn get_updates(telegram: &Telegram, request: GetUpdates) -> Result {
-    for update in telegram.call(request).await? {
-        info!(update.id, ?update.payload);
-    }
-    Ok(())
 }
