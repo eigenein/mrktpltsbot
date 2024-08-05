@@ -34,6 +34,10 @@ async fn fallible_main(cli: Cli) -> Result {
     let telegram = Telegram::new(client, cli.bot_token);
 
     match cli.command {
+        Command::Run(args) => {
+            unimplemented!()
+        }
+
         Command::QuickSearch { query, limit } => {
             for listing in marktplaats.search(&query, limit).await?.listings {
                 info!(
