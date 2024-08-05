@@ -39,8 +39,14 @@ pub struct SendMessage {
     pub html: String,
 }
 
+#[derive(Parser)]
+pub struct Run {}
+
 #[derive(Subcommand)]
 pub enum Command {
+    /// Run the bot indefinitely.
+    Run(Run),
+
     /// Manually search Marktplaats.
     #[clap(alias = "search")]
     QuickSearch {
@@ -53,11 +59,14 @@ pub enum Command {
     },
 
     /// Test Telegram bot API token.
+    #[clap(alias = "me")]
     GetMe,
 
     /// Manually check out the bot updates.
+    #[clap(alias = "updates")]
     GetUpdates(GetUpdates),
 
     /// Send out a test message.
+    #[clap(alias = "message")]
     SendMessage(SendMessage),
 }

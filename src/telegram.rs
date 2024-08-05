@@ -54,12 +54,16 @@ impl Telegram {
 #[serde(untagged)]
 enum Response<T> {
     Ok {
+        #[allow(dead_code)]
         ok: MustBe!(true),
+
         result: T,
     },
 
     Err {
+        #[allow(dead_code)]
         ok: MustBe!(false),
+
         description: String,
         error_code: i32,
 
