@@ -31,7 +31,6 @@ async fn main() -> Result {
 async fn fallible_main(cli: Cli) -> Result {
     let client = build_client()?;
     let marktplaats = Marktplaats(client.clone());
-    let telegram = Telegram::new(client, cli.bot_token);
 
     match cli.command {
         Command::Run(args) => {
@@ -56,8 +55,8 @@ async fn fallible_main(cli: Cli) -> Result {
             Ok(())
         }
 
-        Command::GetMe => {
-            let user = telegram.call(GetMe).await?;
+        Command::GetMe { bot_token } => {
+            let user = Telegram::new(client, bot_token.into()).call(GetMe).await?;
             info!(user.id, user.username);
             Ok(())
         }
@@ -69,7 +68,9 @@ async fn fallible_main(cli: Cli) -> Result {
                 timeout_secs: args.timeout_secs,
                 allowed_updates: args.allowed_updates,
             };
-            let updates = telegram.call(request).await?;
+            let updates = Telegram::new(client, args.bot_token.into())
+                .call(request)
+                .await?;
             info!(n_updates = updates.len());
             for update in updates {
                 info!(update.id, ?update.payload);
@@ -83,7 +84,9 @@ async fn fallible_main(cli: Cli) -> Result {
                 parse_mode: Some(ParseMode::Html),
                 text: args.html,
             };
-            let message = telegram.call(request).await?;
+            let message = Telegram::new(client, args.bot_token.into())
+                .call(request)
+                .await?;
             info!(message.id);
             Ok(())
         }
