@@ -8,27 +8,15 @@ pub struct Cli {
     #[clap(long, env = "SENTRY_DSN")]
     pub sentry_dsn: Option<String>,
 
+    #[clap(long = "bot-token", env = "BOT_TOKEN")]
+    pub bot_token: String,
+
     #[command(subcommand)]
     pub command: Command,
 }
 
 #[derive(Parser)]
-pub struct BotToken {
-    #[clap(long = "bot-token", env = "BOT_TOKEN")]
-    pub bot_token: String,
-}
-
-impl From<BotToken> for String {
-    fn from(bot_token: BotToken) -> Self {
-        bot_token.bot_token
-    }
-}
-
-#[derive(Parser)]
 pub struct GetUpdates {
-    #[clap(flatten)]
-    pub bot_token: BotToken,
-
     #[clap(long)]
     pub offset: Option<u32>,
 
@@ -44,9 +32,6 @@ pub struct GetUpdates {
 
 #[derive(Parser)]
 pub struct SendMessage {
-    #[clap(flatten)]
-    pub bot_token: BotToken,
-
     /// Send the same message this many times.
     #[clap(long, default_value = "1")]
     pub repeat: usize,
@@ -75,14 +60,15 @@ pub enum Command {
         /// Maximum number of results.
         #[clap(long, default_value = "1")]
         limit: u32,
+
+        /// Send the listings to the specified chat.
+        #[clap(long)]
+        chat_id: Option<i64>,
     },
 
     /// Test Telegram bot API token.
     #[clap(alias = "me")]
-    GetMe {
-        #[clap(flatten)]
-        bot_token: BotToken,
-    },
+    GetMe,
 
     /// Manually check out the bot updates.
     #[clap(alias = "updates")]
