@@ -1,3 +1,4 @@
+use chrono_humanize::HumanTime;
 use maud::{html, Markup, Render};
 
 use crate::marktplaats::listing::{Euro, Listing, Price};
@@ -10,14 +11,16 @@ impl Render for Listing {
             a href=(format!("https://www.marktplaats.nl/u/{}/{}/", self.seller.name, self.seller.id)) {
                 "@" (self.seller.name)
             }
-            "\n"
+            " from "
             a href=(format!("https://maps.apple.com/maps?q={}", self.location.city_name)) {
                 (self.location.city_name)
             }
+            "\n"
+            em { (HumanTime::from(self.timestamp)) }
             "\n\n"
             strong { "Price:" } " " (self.price)
             "\n\n"
-            (self.description)
+            blockquote expandable { (self.description) }
         }
     }
 }
