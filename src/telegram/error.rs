@@ -42,5 +42,5 @@ pub enum TelegramError {
 #[derive(Debug, Deserialize)]
 pub struct RetryAfterParameters {
     #[serde(rename = "retry_after")]
-    pub secs: u32,
+    pub secs: u64,
 }

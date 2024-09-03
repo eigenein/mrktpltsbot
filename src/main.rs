@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use clap::Parser;
+use tokio::time::sleep;
 
 use crate::{
     cli::{Cli, Command},
@@ -6,6 +9,7 @@ use crate::{
     marktplaats::{listing::Listings, Marktplaats},
     prelude::*,
     telegram::{
+        error::TelegramError,
         methods::{GetMe, GetUpdates, ParseMode, SendMessage},
         objects::ChatId,
         Telegram,
@@ -79,15 +83,29 @@ async fn fallible_main(cli: Cli) -> Result {
         }
 
         Command::SendMessage(args) => {
-            let request = SendMessage {
-                chat_id: ChatId::Integer(args.chat_id),
-                parse_mode: Some(ParseMode::Html),
-                text: args.html,
-            };
-            let message = Telegram::new(client, args.bot_token.into())
-                .call(request)
-                .await?;
-            info!(message.id);
+            let telegram = Telegram::new(client, args.bot_token.into());
+            for _ in 0..args.repeat {
+                loop {
+                    let request = SendMessage {
+                        chat_id: ChatId::Integer(args.chat_id),
+                        parse_mode: Some(ParseMode::Html),
+                        text: args.html.clone(),
+                    };
+                    match telegram.call(request).await {
+                        Ok(message) => {
+                            info!(message.id);
+                            break;
+                        }
+                        Err(TelegramError::TooManyRequests { retry_after, .. }) => {
+                            warn!(retry_after.secs, "Too many requests");
+                            sleep(Duration::from_secs(retry_after.secs)).await;
+                        }
+                        Err(error) => {
+                            bail!("{error:#}")
+                        }
+                    }
+                }
+            }
             Ok(())
         }
     }

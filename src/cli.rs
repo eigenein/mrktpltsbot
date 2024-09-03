@@ -47,6 +47,10 @@ pub struct SendMessage {
     #[clap(flatten)]
     pub bot_token: BotToken,
 
+    /// Send the same message this many times.
+    #[clap(long, default_value = "1")]
+    pub repeat: usize,
+
     #[clap(long)]
     pub chat_id: i64,
 
