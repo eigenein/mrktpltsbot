@@ -8,15 +8,27 @@ pub struct Cli {
     #[clap(long, env = "SENTRY_DSN")]
     pub sentry_dsn: Option<String>,
 
-    #[clap(long, env = "BOT_TOKEN")]
-    pub bot_token: String,
-
     #[command(subcommand)]
     pub command: Command,
 }
 
 #[derive(Parser)]
+pub struct BotToken {
+    #[clap(long = "bot-token", env = "BOT_TOKEN")]
+    pub bot_token: String,
+}
+
+impl From<BotToken> for String {
+    fn from(bot_token: BotToken) -> Self {
+        bot_token.bot_token
+    }
+}
+
+#[derive(Parser)]
 pub struct GetUpdates {
+    #[clap(flatten)]
+    pub bot_token: BotToken,
+
     #[clap(long)]
     pub offset: Option<u32>,
 
@@ -32,6 +44,9 @@ pub struct GetUpdates {
 
 #[derive(Parser)]
 pub struct SendMessage {
+    #[clap(flatten)]
+    pub bot_token: BotToken,
+
     #[clap(long)]
     pub chat_id: i64,
 
@@ -60,7 +75,10 @@ pub enum Command {
 
     /// Test Telegram bot API token.
     #[clap(alias = "me")]
-    GetMe,
+    GetMe {
+        #[clap(flatten)]
+        bot_token: BotToken,
+    },
 
     /// Manually check out the bot updates.
     #[clap(alias = "updates")]
