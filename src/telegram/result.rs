@@ -9,17 +9,11 @@ impl<T> From<Response<T>> for TelegramResult<T> {
         match response {
             Response::Ok { result, .. } => Ok(result),
 
-            Response::Err {
-                error_code: 429,
-                parameters,
-                ..
-            } => Err(TelegramError::TooManyRequests(
-                parameters
-                    .and_then(|parameters| parameters.retry_after_secs)
-                    .unwrap_or_default(),
-            )),
+            Response::TooManyRequests { retry_after, .. } => {
+                Err(TelegramError::TooManyRequests(retry_after.secs))
+            }
 
-            Response::Err {
+            Response::OtherError {
                 description,
                 error_code,
                 ..

@@ -67,25 +67,32 @@ enum Response<T> {
         result: T,
     },
 
-    Err {
+    TooManyRequests {
+        #[allow(dead_code)]
+        ok: MustBe!(false),
+
+        error_code: MustBe!(429),
+
+        #[serde(rename = "parameters")]
+        retry_after: RetryAfterParameters,
+    },
+
+    OtherError {
         #[allow(dead_code)]
         ok: MustBe!(false),
 
         description: String,
         error_code: i32,
-
-        #[serde(default)]
-        parameters: Option<ResponseParameters>,
     },
 }
 
-/// [Response parameters][1].
+/// [Additional error details for exceeded rate limit][1].
 ///
 /// [1]: https://core.telegram.org/bots/api#responseparameters
 #[derive(Deserialize)]
-pub struct ResponseParameters {
-    #[serde(rename = "retry_after", default)]
-    pub retry_after_secs: Option<u32>,
+pub struct RetryAfterParameters {
+    #[serde(rename = "retry_after")]
+    pub secs: u32,
 }
 
 #[cfg(test)]
@@ -100,7 +107,7 @@ mod tests {
             Response::Ok { result, .. } => {
                 assert_eq!(result, 42);
             }
-            Response::Err { .. } => unreachable!(),
+            _ => unreachable!(),
         }
         Ok(())
     }
@@ -112,15 +119,10 @@ mod tests {
             r#"{"ok": false, "error_code": 429, "description": "Too Many Requests: retry after X", "parameters": {"retry_after": 123}}"#,
         )?;
         match response {
-            Response::Err {
-                error_code,
-                parameters,
-                ..
-            } => {
-                assert_eq!(error_code, 429);
-                assert_eq!(parameters.unwrap().retry_after_secs.unwrap(), 123);
+            Response::TooManyRequests { retry_after, .. } => {
+                assert_eq!(retry_after.secs, 123);
             }
-            Response::Ok { .. } => unreachable!(),
+            _ => unreachable!(),
         }
         Ok(())
     }
