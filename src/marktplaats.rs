@@ -1,7 +1,5 @@
 pub mod listing;
 
-use tracing::Level;
-
 use crate::prelude::*;
 
 #[must_use]
@@ -13,7 +11,7 @@ impl Marktplaats {
     /// # Returns
     ///
     /// Raw response payload.
-    #[instrument(skip_all, fields(query = query, limit = limit), ret(level = Level::DEBUG), err(Debug))]
+    #[instrument(skip_all, fields(query = query, limit = limit), ret(level = Level::DEBUG), err(level = Level::DEBUG))]
     pub async fn search(&self, query: &str, limit: u32) -> Result<String> {
         self.0
             .get("https://www.marktplaats.nl/lrp/api/search?offset=0&sortBy=SORT_INDEX&sortOrder=DECREASING")
