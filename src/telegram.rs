@@ -1,11 +1,18 @@
+pub mod error;
 pub mod methods;
 pub mod objects;
+pub mod result;
+
+use std::fmt::Debug;
 
 use monostate::MustBe;
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Deserialize};
 
-use crate::{prelude::*, telegram::methods::Method};
+use crate::{
+    prelude::*,
+    telegram::{methods::Method, result::TelegramResult},
+};
 
 #[must_use]
 pub struct Telegram {
@@ -18,11 +25,11 @@ impl Telegram {
         Self { client, token }
     }
 
-    #[instrument(skip_all, fields(method = R::NAME))]
-    pub async fn call<R>(&self, request: R) -> Result<R::Response>
+    #[instrument(skip_all, fields(method = R::NAME), ret(level = Level::DEBUG), err(level = Level::DEBUG))]
+    pub async fn call<R>(&self, request: R) -> TelegramResult<R::Response>
     where
         R: Method,
-        R::Response: DeserializeOwned,
+        R::Response: Debug + DeserializeOwned,
     {
         let response = self
             .client
@@ -72,19 +79,6 @@ enum Response<T> {
     },
 }
 
-impl<T> From<Response<T>> for Result<T> {
-    fn from(response: Response<T>) -> Self {
-        match response {
-            Response::Ok { result, .. } => Ok(result),
-            Response::Err {
-                description,
-                error_code,
-                ..
-            } => Err(anyhow!("{description} ({error_code})")),
-        }
-    }
-}
-
 /// [Response parameters][1].
 ///
 /// [1]: https://core.telegram.org/bots/api#responseparameters
@@ -100,12 +94,34 @@ mod tests {
 
     #[test]
     fn test_response_ok() -> Result {
-        assert_eq!(
-            Result::from(serde_json::from_str::<Response<u32>>(
-                r#"{"ok": true, "result": 42}"#
-            )?)?,
-            42
-        );
+        // language=json
+        let response: Response<u32> = serde_json::from_str(r#"{"ok": true, "result": 42}"#)?;
+        match response {
+            Response::Ok { result, .. } => {
+                assert_eq!(result, 42);
+            }
+            Response::Err { .. } => unreachable!(),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_too_many_requests() -> Result {
+        // language=json
+        let response: Response<()> = serde_json::from_str(
+            r#"{"ok": false, "error_code": 429, "description": "Too Many Requests: retry after X", "parameters": {"retry_after": 123}}"#,
+        )?;
+        match response {
+            Response::Err {
+                error_code,
+                parameters,
+                ..
+            } => {
+                assert_eq!(error_code, 429);
+                assert_eq!(parameters.unwrap().retry_after_secs.unwrap(), 123);
+            }
+            Response::Ok { .. } => unreachable!(),
+        }
         Ok(())
     }
 }
