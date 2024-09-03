@@ -85,17 +85,42 @@ pub enum ParseMode {
     Html,
 }
 
+/// Describes the [options][1] used for link preview generation.
+///
+/// [1]: https://core.telegram.org/bots/api#linkpreviewoptions
+#[derive(Default, Serialize)]
+#[must_use]
+pub struct LinkPreviewOptions {
+    /// `true`, if the link preview is disabled
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_disabled: Option<bool>,
+
+    /// URL to use for the link preview.
+    ///
+    /// If empty, then the first URL found in the message text will be used
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+
+    /// `true`, if the link preview must be shown above the message text;
+    /// otherwise, the link preview will be shown below the message text
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_above_text: Option<bool>,
+}
+
 #[derive(Serialize)]
 #[must_use]
-pub struct SendMessage {
+pub struct SendMessage<'a> {
     pub chat_id: ChatId,
-    pub text: String,
+    pub text: &'a str,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parse_mode: Option<ParseMode>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub link_preview_options: Option<LinkPreviewOptions>,
 }
 
-impl Method for SendMessage {
+impl Method for SendMessage<'_> {
     const NAME: &'static str = "sendMessage";
     type Response = Message;
 }

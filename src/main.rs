@@ -1,7 +1,5 @@
-use std::time::Duration;
-
 use clap::Parser;
-use tokio::time::sleep;
+use maud::Render;
 
 use crate::{
     cli::{Cli, Command},
@@ -9,8 +7,7 @@ use crate::{
     marktplaats::{listing::Listings, Marktplaats},
     prelude::*,
     telegram::{
-        error::TelegramError,
-        methods::{GetMe, GetUpdates, ParseMode, SendMessage},
+        methods::{GetMe, GetUpdates, LinkPreviewOptions, ParseMode, SendMessage},
         objects::ChatId,
         Telegram,
     },
@@ -35,13 +32,18 @@ async fn main() -> Result {
 async fn fallible_main(cli: Cli) -> Result {
     let client = build_client()?;
     let marktplaats = Marktplaats(client.clone());
+    let telegram = Telegram::new(client, cli.bot_token);
 
     match cli.command {
         Command::Run(args) => {
             unimplemented!()
         }
 
-        Command::QuickSearch { query, limit } => {
+        Command::QuickSearch {
+            query,
+            limit,
+            chat_id,
+        } => {
             let listings: Listings =
                 serde_json::from_str(&marktplaats.search(&query, limit).await?)?;
             for listing in listings {
@@ -55,12 +57,26 @@ async fn fallible_main(cli: Cli) -> Result {
                     seller_name = listing.seller.name,
                     "🌠",
                 );
+                if let Some(chat_id) = chat_id {
+                    let request = SendMessage {
+                        chat_id: ChatId::Integer(chat_id),
+                        parse_mode: Some(ParseMode::Html),
+                        text: &listing.render().into_string(),
+                        link_preview_options: Some(LinkPreviewOptions {
+                            is_disabled: Some(true),
+                            url: None,
+                            show_above_text: None,
+                        }),
+                    };
+                    let message = telegram.call(request).await?;
+                    info!(message.id);
+                }
             }
             Ok(())
         }
 
-        Command::GetMe { bot_token } => {
-            let user = Telegram::new(client, bot_token.into()).call(GetMe).await?;
+        Command::GetMe => {
+            let user = telegram.call(GetMe).await?;
             info!(user.id, user.username);
             Ok(())
         }
@@ -72,9 +88,7 @@ async fn fallible_main(cli: Cli) -> Result {
                 timeout_secs: args.timeout_secs,
                 allowed_updates: args.allowed_updates,
             };
-            let updates = Telegram::new(client, args.bot_token.into())
-                .call(request)
-                .await?;
+            let updates = telegram.call(request).await?;
             info!(n_updates = updates.len());
             for update in updates {
                 info!(update.id, ?update.payload);
@@ -83,28 +97,15 @@ async fn fallible_main(cli: Cli) -> Result {
         }
 
         Command::SendMessage(args) => {
-            let telegram = Telegram::new(client, args.bot_token.into());
             for _ in 0..args.repeat {
-                loop {
-                    let request = SendMessage {
-                        chat_id: ChatId::Integer(args.chat_id),
-                        parse_mode: Some(ParseMode::Html),
-                        text: args.html.clone(),
-                    };
-                    match telegram.call(request).await {
-                        Ok(message) => {
-                            info!(message.id);
-                            break;
-                        }
-                        Err(TelegramError::TooManyRequests { retry_after, .. }) => {
-                            warn!(retry_after.secs, "Too many requests");
-                            sleep(Duration::from_secs(retry_after.secs)).await;
-                        }
-                        Err(error) => {
-                            bail!("{error:#}")
-                        }
-                    }
-                }
+                let request = SendMessage {
+                    chat_id: ChatId::Integer(args.chat_id),
+                    parse_mode: Some(ParseMode::Html),
+                    text: &args.html,
+                    link_preview_options: None,
+                };
+                let message = telegram.call(request).await?;
+                info!(message.id);
             }
             Ok(())
         }

@@ -30,6 +30,9 @@ pub struct Listing {
     /// Advertisement description body.
     pub description: String,
 
+    #[serde(rename = "categorySpecificDescription", default)]
+    pub category_specific_description: Option<String>,
+
     /// Most likely, the creation timestamp.
     #[serde(rename = "date")]
     pub timestamp: DateTime<Local>,
@@ -50,6 +53,20 @@ pub struct Listing {
 
     #[serde(rename = "sellerInformation")]
     pub seller: Seller,
+
+    pub location: Location,
+}
+
+impl Listing {
+    pub fn https_url(&self) -> String {
+        format!("https://www.marktplaats.nl{}", self.url)
+    }
+
+    pub fn description(&self) -> &str {
+        self.category_specific_description
+            .as_deref()
+            .unwrap_or(&self.description)
+    }
 }
 
 #[derive(Deserialize)]
@@ -115,10 +132,10 @@ pub enum Price {
 }
 
 /// Price in euro-cents.
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Cents(pub u32);
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Euro(pub Decimal);
 
 impl From<Cents> for Euro {
@@ -138,6 +155,18 @@ pub struct Picture {
 
     #[serde(rename = "mediumUrl", default)]
     pub medium_url: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct Location {
+    #[serde(rename = "cityName")]
+    pub city_name: String,
+
+    #[serde(default)]
+    pub latitude: Option<f64>,
+
+    #[serde(default)]
+    pub longitude: Option<f64>,
 }
 
 #[cfg(test)]
