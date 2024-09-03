@@ -3,7 +3,7 @@ use clap::Parser;
 use crate::{
     cli::{Cli, Command},
     client::build_client,
-    marktplaats::Marktplaats,
+    marktplaats::{listing::Listings, Marktplaats},
     prelude::*,
     telegram::{
         methods::{GetMe, GetUpdates, ParseMode, SendMessage},
@@ -39,7 +39,9 @@ async fn fallible_main(cli: Cli) -> Result {
         }
 
         Command::QuickSearch { query, limit } => {
-            for listing in marktplaats.search(&query, limit).await?.listings {
+            let listings: Listings =
+                serde_json::from_str(&marktplaats.search(&query, limit).await?)?;
+            for listing in listings {
                 info!(
                     id = listing.item_id,
                     timestamp = %listing.timestamp,
