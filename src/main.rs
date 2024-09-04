@@ -49,6 +49,7 @@ async fn fallible_main(cli: Cli) -> Result {
                 .limit(limit)
                 .sort_by(SortBy::SortIndex)
                 .sort_order(SortOrder::Decreasing)
+                .search_in_title_and_description(true)
                 .build();
             let listings: Listings = serde_json::from_str(&marktplaats.search(&request).await?)?;
             for listing in listings {
@@ -67,11 +68,9 @@ async fn fallible_main(cli: Cli) -> Result {
                         chat_id: ChatId::Integer(chat_id),
                         parse_mode: Some(ParseMode::Html),
                         text: &listing.render().into_string(),
-                        link_preview_options: Some(LinkPreviewOptions {
-                            is_disabled: Some(true),
-                            url: None,
-                            show_above_text: None,
-                        }),
+                        link_preview_options: Some(
+                            LinkPreviewOptions::builder().is_disabled(true).build(),
+                        ),
                     };
                     let message = telegram.call(request).await?;
                     info!(message.id);

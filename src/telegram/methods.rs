@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use bon::builder;
 use serde::Serialize;
 
 use crate::{
@@ -90,6 +91,7 @@ pub enum ParseMode {
 /// [1]: https://core.telegram.org/bots/api#linkpreviewoptions
 #[derive(Default, Serialize)]
 #[must_use]
+#[builder]
 pub struct LinkPreviewOptions {
     /// `true`, if the link preview is disabled
     #[serde(skip_serializing_if = "Option::is_none")]
