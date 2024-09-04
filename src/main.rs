@@ -64,14 +64,15 @@ async fn fallible_main(cli: Cli) -> Result {
                     "🌠",
                 );
                 if let Some(chat_id) = chat_id {
-                    let request = SendMessage {
-                        chat_id: ChatId::Integer(chat_id),
-                        parse_mode: Some(ParseMode::Html),
-                        text: &listing.render().into_string(),
-                        link_preview_options: Some(
+                    let html = listing.render().into_string();
+                    let request = SendMessage::builder()
+                        .chat_id(ChatId::Integer(chat_id))
+                        .text(&html)
+                        .parse_mode(ParseMode::Html)
+                        .link_preview_options(
                             LinkPreviewOptions::builder().is_disabled(true).build(),
-                        ),
-                    };
+                        )
+                        .build();
                     let message = telegram.call(request).await?;
                     info!(message.id);
                 }
@@ -102,12 +103,11 @@ async fn fallible_main(cli: Cli) -> Result {
 
         Command::SendMessage(args) => {
             for _ in 0..args.repeat {
-                let request = SendMessage {
-                    chat_id: ChatId::Integer(args.chat_id),
-                    parse_mode: Some(ParseMode::Html),
-                    text: &args.html,
-                    link_preview_options: None,
-                };
+                let request = SendMessage::builder()
+                    .chat_id(ChatId::Integer(args.chat_id))
+                    .text(&args.html)
+                    .parse_mode(ParseMode::Html)
+                    .build();
                 let message = telegram.call(request).await?;
                 info!(message.id);
             }

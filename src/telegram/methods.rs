@@ -111,6 +111,7 @@ pub struct LinkPreviewOptions {
 
 #[derive(Serialize)]
 #[must_use]
+#[builder]
 pub struct SendMessage<'a> {
     pub chat_id: ChatId,
     pub text: &'a str,
