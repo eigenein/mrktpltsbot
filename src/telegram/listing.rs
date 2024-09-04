@@ -113,7 +113,7 @@ impl Render for Condition {
             @match self {
                 Self::New => "🟢 new",
                 Self::AsGoodAsNew => "🟡 as good as new",
-                Self::Refurbished => "🟡 as good as new",
+                Self::Refurbished => "🟡 refurbished",
                 Self::Used => "🟠 used",
                 Self::NotWorking => "⛔️ not working",
             }
