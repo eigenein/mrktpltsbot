@@ -32,6 +32,7 @@ pub struct Update {
 #[must_use]
 pub enum UpdatePayload {
     #[serde(rename = "message")]
+    #[allow(dead_code)]
     Message(Message),
 
     #[serde(other)]
@@ -42,7 +43,9 @@ pub enum UpdatePayload {
 #[serde(untagged)]
 #[must_use]
 pub enum ChatId {
+    #[allow(dead_code)]
     Integer(i64),
+    #[allow(dead_code)]
     Username(String),
 }
 
@@ -53,20 +56,25 @@ pub enum ChatId {
 #[must_use]
 pub struct Message {
     #[serde(rename = "message_id")]
+    #[allow(dead_code)]
     pub id: u32,
 
     #[serde(default)]
+    #[allow(dead_code)]
     pub from: Option<User>,
 
     #[serde(default)]
+    #[allow(dead_code)]
     pub text: Option<String>,
 
     #[serde(default)]
+    #[allow(dead_code)]
     pub chat: Option<Chat>,
 }
 
 #[derive(Debug, Deserialize)]
 #[must_use]
 pub struct Chat {
+    #[allow(dead_code)]
     pub id: i64,
 }

@@ -1,6 +1,7 @@
 pub mod listing;
 
 use bon::builder;
+use reqwest::Url;
 use serde::Serialize;
 
 use crate::prelude::*;
@@ -14,12 +15,14 @@ impl Marktplaats {
     /// # Returns
     ///
     /// Raw response payload.
-    #[instrument(skip_all, fields(query = query, limit = limit), ret(level = Level::DEBUG), err(level = Level::DEBUG))]
-    pub async fn search(&self, query: &str, limit: u32) -> Result<String> {
+    #[instrument(skip_all, fields(query = request.query), ret(level = Level::DEBUG), err(level = Level::DEBUG))]
+    pub async fn search(&self, request: &SearchRequest<'_>) -> Result<String> {
+        let query =
+            serde_qs::to_string(request).context("failed to serialize the search request")?;
+        let mut url = Url::parse("https://www.marktplaats.nl/lrp/api/search")?;
+        url.set_query(Some(&query));
         self.0
-            .get("https://www.marktplaats.nl/lrp/api/search?offset=0&sortBy=SORT_INDEX&sortOrder=DECREASING")
-            .query(&[("query", query)])
-            .query(&[("limit", limit)])
+            .get(url)
             .send()
             .await
             .with_context(|| format!("failed to search `{query}`"))?
@@ -38,7 +41,10 @@ pub struct SearchRequest<'a> {
     pub query: Option<&'a str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<usize>,
+    pub offset: Option<u32>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
 
     #[serde(rename = "sortBy", skip_serializing_if = "Option::is_none")]
     pub sort_by: Option<SortBy>,
@@ -61,12 +67,15 @@ pub struct SearchRequest<'a> {
 #[derive(Serialize)]
 pub enum SortBy {
     #[serde(rename = "OPTIMIZED")]
+    #[allow(dead_code)]
     Optimized,
 
     #[serde(rename = "SORT_INDEX")]
+    #[allow(dead_code)]
     SortIndex,
 
     #[serde(rename = "PRICE")]
+    #[allow(dead_code)]
     Price,
 }
 
@@ -74,9 +83,11 @@ pub enum SortBy {
 #[derive(Serialize)]
 pub enum SortOrder {
     #[serde(rename = "INCREASING")]
+    #[allow(dead_code)]
     Increasing,
 
     #[serde(rename = "DECREASING")]
+    #[allow(dead_code)]
     Decreasing,
 }
 
