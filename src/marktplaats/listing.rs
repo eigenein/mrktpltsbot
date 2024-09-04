@@ -2,8 +2,6 @@ use chrono::{DateTime, Local};
 use rust_decimal::Decimal;
 use serde::Deserialize;
 
-use crate::prelude::*;
-
 #[derive(Deserialize)]
 pub struct Listings {
     pub listings: Vec<Listing>,
@@ -18,10 +16,11 @@ impl IntoIterator for Listings {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Listing {
     /// Marktplaats item ID, looks like `m2137081815`.
     #[serde(rename = "itemId")]
+    #[allow(dead_code)]
     pub item_id: String,
 
     /// Advertisement title.
@@ -41,7 +40,7 @@ pub struct Listing {
     #[serde(default, rename = "pictures")]
     pub pictures: Vec<Picture>,
 
-    /// Low-quality image URLs.
+    /// Low-quality image URLs **without schema**.
     #[serde(default, rename = "imageUrls")]
     pub image_urls: Vec<String>,
 
@@ -72,7 +71,7 @@ impl Listing {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Seller {
     #[serde(rename = "sellerId")]
     pub id: u32,
@@ -164,7 +163,7 @@ pub struct Picture {
     pub medium_url: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Location {
     #[serde(rename = "cityName")]
     pub city_name: String,
@@ -183,6 +182,7 @@ mod tests {
     use rust_decimal_macros::dec;
 
     use super::*;
+    use crate::prelude::*;
 
     #[test]
     fn euro_from_cents_ok() {

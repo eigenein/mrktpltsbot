@@ -60,16 +60,7 @@ async fn fallible_main(cli: Cli) -> Result {
                 .build();
             let listings: Listings = serde_json::from_str(&marktplaats.search(&request).await?)?;
             for listing in listings {
-                info!(
-                    id = listing.item_id,
-                    timestamp = %listing.timestamp,
-                    title = listing.title,
-                    n_pictures = listing.pictures.len(),
-                    n_image_urls = listing.image_urls.len(),
-                    price = ?listing.price,
-                    seller_name = listing.seller.name,
-                    "Found advertisement",
-                );
+                info!(?listing, "Found advertisement");
                 if let Some(chat_id) = chat_id {
                     let html = listing.render().into_string();
                     let url = listing.https_url();
