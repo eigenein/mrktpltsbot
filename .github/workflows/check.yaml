@@ -4,12 +4,12 @@ on:
   push:
     branches:
       - main
-      - dev
     tags-ignore:
       - '**'
   pull_request:
     branches:
       - main
+  workflow_dispatch: { }
 
 env:
   CARGO_TERM_COLOR: "always"
@@ -40,11 +40,11 @@ jobs:
         run: cargo llvm-cov --all-features --workspace --codecov --output-path=codecov.json
 
       - name: 📤 Upload coverage
-        uses: codecov/codecov-action@v4.0.1
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           files: codecov.json
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: eigenein/mrktpltsbot
 
       - name: 💬 Clippy
         uses: giraffate/clippy-action@v1
