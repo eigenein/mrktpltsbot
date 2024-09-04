@@ -17,12 +17,12 @@ impl Render for Listing {
             a href=(format!("https://maps.apple.com/maps?q={}", self.location.city_name)) {
                 (self.location.city_name)
             }
-            "\n"
-            em { (HumanTime::from(self.timestamp)) }
+            " "
+            (HumanTime::from(self.timestamp))
             "\n\n"
             strong { "Price:" } " " (self.price)
             "\n\n"
-            blockquote expandable { (self.description) }
+            blockquote expandable { (self.description()) }
         }
     }
 }
