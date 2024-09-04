@@ -48,8 +48,9 @@ pub struct Listing {
     #[serde(rename = "priceInfo")]
     pub price: Price,
 
+    /// Advertisement URL path without schema and host.
     #[serde(rename = "vipUrl")]
-    pub url: String,
+    pub url_path: String,
 
     #[serde(rename = "sellerInformation")]
     pub seller: Seller,
@@ -60,7 +61,7 @@ pub struct Listing {
 impl Listing {
     #[allow(dead_code)]
     pub fn https_url(&self) -> String {
-        format!("https://www.marktplaats.nl{}", self.url)
+        format!("https://www.marktplaats.nl{}", self.url_path)
     }
 
     #[allow(dead_code)]

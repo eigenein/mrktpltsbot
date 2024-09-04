@@ -7,8 +7,15 @@ use crate::{
     marktplaats::{listing::Listings, Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
-        methods::{GetMe, GetUpdates, LinkPreviewOptions, ParseMode, SendMessage},
-        objects::ChatId,
+        methods::{GetMe, GetUpdates, SendMessage},
+        objects::{
+            ChatId,
+            InlineKeyboardButton,
+            InlineKeyboardButtonPayload,
+            InlineKeyboardMarkup,
+            LinkPreviewOptions,
+            ParseMode,
+        },
         Telegram,
     },
 };
@@ -61,10 +68,11 @@ async fn fallible_main(cli: Cli) -> Result {
                     n_image_urls = listing.image_urls.len(),
                     price = ?listing.price,
                     seller_name = listing.seller.name,
-                    "🌠",
+                    "Found advertisement",
                 );
                 if let Some(chat_id) = chat_id {
                     let html = listing.render().into_string();
+                    let url = listing.https_url();
                     let request = SendMessage::builder()
                         .chat_id(ChatId::Integer(chat_id))
                         .text(&html)
@@ -72,9 +80,13 @@ async fn fallible_main(cli: Cli) -> Result {
                         .link_preview_options(
                             LinkPreviewOptions::builder().is_disabled(true).build(),
                         )
+                        .reply_markup(InlineKeyboardMarkup::single_button(InlineKeyboardButton {
+                            text: "View",
+                            payload: InlineKeyboardButtonPayload::Url(&url),
+                        }))
                         .build();
                     let message = telegram.call(request).await?;
-                    info!(message.id);
+                    info!(message = ?message, "Sent");
                 }
             }
             Ok(())
@@ -82,7 +94,7 @@ async fn fallible_main(cli: Cli) -> Result {
 
         Command::GetMe => {
             let user = telegram.call(GetMe).await?;
-            info!(user.id, user.username);
+            info!(user.id, user.username, "I am");
             Ok(())
         }
 
@@ -96,7 +108,7 @@ async fn fallible_main(cli: Cli) -> Result {
             let updates = telegram.call(request).await?;
             info!(n_updates = updates.len());
             for update in updates {
-                info!(update.id, ?update.payload);
+                info!(update.id, ?update.payload, "Received");
             }
             Ok(())
         }
