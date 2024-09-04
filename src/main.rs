@@ -4,7 +4,7 @@ use maud::Render;
 use crate::{
     cli::{Cli, Command},
     client::build_client,
-    marktplaats::{listing::Listings, Marktplaats},
+    marktplaats::{listing::Listings, Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
         methods::{GetMe, GetUpdates, LinkPreviewOptions, ParseMode, SendMessage},
@@ -44,8 +44,13 @@ async fn fallible_main(cli: Cli) -> Result {
             limit,
             chat_id,
         } => {
-            let listings: Listings =
-                serde_json::from_str(&marktplaats.search(&query, limit).await?)?;
+            let request = SearchRequest::builder()
+                .query(&query)
+                .limit(limit)
+                .sort_by(SortBy::SortIndex)
+                .sort_order(SortOrder::Decreasing)
+                .build();
+            let listings: Listings = serde_json::from_str(&marktplaats.search(&request).await?)?;
             for listing in listings {
                 info!(
                     id = listing.item_id,

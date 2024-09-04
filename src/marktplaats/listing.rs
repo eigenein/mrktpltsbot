@@ -58,10 +58,12 @@ pub struct Listing {
 }
 
 impl Listing {
+    #[allow(dead_code)]
     pub fn https_url(&self) -> String {
         format!("https://www.marktplaats.nl{}", self.url)
     }
 
+    #[allow(dead_code)]
     pub fn description(&self) -> &str {
         self.category_specific_description
             .as_deref()
@@ -79,6 +81,7 @@ pub struct Seller {
 }
 
 impl Listing {
+    #[allow(dead_code)]
     pub fn image_urls(&self) -> impl Iterator<Item = &str> {
         self.pictures.iter().filter_map(|picture| {
             picture
@@ -148,12 +151,15 @@ impl From<Cents> for Euro {
 #[allow(clippy::struct_field_names)]
 pub struct Picture {
     #[serde(rename = "extraExtraLargeUrl", default)]
+    #[allow(dead_code)]
     pub extra_large_url: Option<String>,
 
     #[serde(rename = "largeUrl", default)]
+    #[allow(dead_code)]
     pub large_url: Option<String>,
 
     #[serde(rename = "mediumUrl", default)]
+    #[allow(dead_code)]
     pub medium_url: Option<String>,
 }
 
@@ -163,9 +169,11 @@ pub struct Location {
     pub city_name: String,
 
     #[serde(default)]
+    #[allow(dead_code)]
     pub latitude: Option<f64>,
 
     #[serde(default)]
+    #[allow(dead_code)]
     pub longitude: Option<f64>,
 }
 
