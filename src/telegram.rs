@@ -1,5 +1,5 @@
 pub mod error;
-mod listing;
+pub mod listing;
 pub mod methods;
 pub mod objects;
 pub mod result;

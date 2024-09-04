@@ -42,6 +42,7 @@ pub struct Listing {
 
     /// Low-quality image URLs **without schema**.
     #[serde(default, rename = "imageUrls")]
+    #[allow(dead_code)]
     pub image_urls: Vec<String>,
 
     #[serde(rename = "priceInfo")]
@@ -161,6 +162,15 @@ pub struct Picture {
     #[serde(rename = "mediumUrl", default)]
     #[allow(dead_code)]
     pub medium_url: Option<String>,
+}
+
+impl Picture {
+    pub fn any_url(&self) -> Option<&str> {
+        self.extra_large_url
+            .as_deref()
+            .or(self.large_url.as_deref())
+            .or(self.medium_url.as_deref())
+    }
 }
 
 #[derive(Debug, Deserialize)]
