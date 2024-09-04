@@ -1,19 +1,11 @@
-use std::time::Duration;
+use std::{borrow::Cow, time::Duration};
 
 use bon::builder;
 use serde::{Serialize, Serializer};
 
 use crate::{
     client::DEFAULT_TIMEOUT,
-    telegram::objects::{
-        ChatId,
-        LinkPreviewOptions,
-        Message,
-        ParseMode,
-        ReplyMarkup,
-        Update,
-        User,
-    },
+    telegram::objects::{ChatId, LinkPreviewOptions, Message, ParseMode, Update, User},
 };
 
 /// Telegram bot API method.
@@ -93,20 +85,15 @@ impl Method for GetUpdates {
 #[builder]
 pub struct SendMessage<'a> {
     pub chat_id: ChatId,
-    pub text: &'a str,
+
+    #[builder(into)]
+    pub text: Cow<'a, str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parse_mode: Option<ParseMode>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub link_preview_options: Option<LinkPreviewOptions>,
-
-    #[serde(
-        serialize_with = "serialize_reply_markup",
-        skip_serializing_if = "Option::is_none"
-    )]
-    #[builder(into)]
-    pub reply_markup: Option<ReplyMarkup<'a>>,
 }
 
 impl Method for SendMessage<'_> {
@@ -114,14 +101,81 @@ impl Method for SendMessage<'_> {
     type Response = Message;
 }
 
-fn serialize_reply_markup<S: Serializer>(
-    reply_markup: &Option<ReplyMarkup>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let reply_markup = reply_markup
-        .as_ref()
-        .expect("`reply_markup` should not be `None`");
-    let json = serde_json::to_string(&reply_markup)
+/// [Send a photo][1].
+///
+/// [1]: https://core.telegram.org/bots/api#sendphoto
+#[derive(Serialize)]
+#[must_use]
+#[builder]
+pub struct SendPhoto<'a> {
+    pub chat_id: ChatId,
+
+    #[builder(into)]
+    pub photo: Cow<'a, str>,
+
+    #[builder(into)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub caption: Option<Cow<'a, str>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parse_mode: Option<ParseMode>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_caption_above_media: Option<bool>,
+}
+
+impl Method for SendPhoto<'_> {
+    const NAME: &'static str = "sendPhoto";
+    type Response = Message;
+}
+
+fn serialize_media<S: Serializer>(media: &[Media], serializer: S) -> Result<S::Ok, S::Error> {
+    let json = serde_json::to_string(media)
         .map_err(|error| serde::ser::Error::custom(format!("{error:#}")))?;
     serializer.serialize_str(&json)
+}
+
+/// Use this method to [send a group][1] of photos, videos, documents or audios as an album.
+///
+/// [1]: https://core.telegram.org/bots/api#sendmediagroup
+#[derive(Serialize)]
+#[must_use]
+#[builder]
+pub struct SendMediaGroup<'a> {
+    pub chat_id: ChatId,
+
+    /// A JSON-serialized array describing messages to be sent, must include 2-10 items.
+    #[serde(serialize_with = "serialize_media")]
+    pub media: Vec<Media<'a>>,
+}
+
+impl Method for SendMediaGroup<'_> {
+    const NAME: &'static str = "sendMediaGroup";
+    type Response = Vec<Message>;
+}
+
+#[derive(Serialize)]
+#[must_use]
+#[serde(tag = "type")]
+pub enum Media<'a> {
+    #[serde(rename = "photo")]
+    InputMediaPhoto(InputMediaPhoto<'a>),
+}
+
+#[derive(Serialize)]
+#[must_use]
+#[builder]
+pub struct InputMediaPhoto<'a> {
+    #[builder(into)]
+    pub media: Cow<'a, str>,
+
+    #[builder(into)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub caption: Option<Cow<'a, str>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parse_mode: Option<ParseMode>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_caption_above_media: Option<bool>,
 }

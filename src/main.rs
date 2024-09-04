@@ -1,5 +1,4 @@
 use clap::Parser;
-use maud::Render;
 
 use crate::{
     cli::{Cli, Command},
@@ -7,15 +6,9 @@ use crate::{
     marktplaats::{listing::Listings, Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
+        listing::SendListingRequest,
         methods::{GetMe, GetUpdates, SendMessage},
-        objects::{
-            ChatId,
-            InlineKeyboardButton,
-            InlineKeyboardButtonPayload,
-            InlineKeyboardMarkup,
-            LinkPreviewOptions,
-            ParseMode,
-        },
+        objects::{ChatId, ParseMode},
         Telegram,
     },
 };
@@ -62,22 +55,20 @@ async fn fallible_main(cli: Cli) -> Result {
             for listing in listings {
                 info!(?listing, "Found advertisement");
                 if let Some(chat_id) = chat_id {
-                    let html = listing.render().into_string();
-                    let url = listing.https_url();
-                    let request = SendMessage::builder()
-                        .chat_id(ChatId::Integer(chat_id))
-                        .text(&html)
-                        .parse_mode(ParseMode::Html)
-                        .link_preview_options(
-                            LinkPreviewOptions::builder().is_disabled(true).build(),
-                        )
-                        .reply_markup(InlineKeyboardMarkup::single_button(InlineKeyboardButton {
-                            text: "View",
-                            payload: InlineKeyboardButtonPayload::Url(&url),
-                        }))
-                        .build();
-                    let message = telegram.call(request).await?;
-                    info!(message = ?message, "Sent");
+                    match SendListingRequest::build(ChatId::Integer(chat_id), &listing) {
+                        SendListingRequest::Message(request) => {
+                            let message = telegram.call(request).await?;
+                            info!(?message, "Sent");
+                        }
+                        SendListingRequest::Photo(request) => {
+                            let message = telegram.call(request).await?;
+                            info!(?message, "Sent");
+                        }
+                        SendListingRequest::MediaGroup(request) => {
+                            let messages = telegram.call(request).await?;
+                            info!(?messages, "Sent");
+                        }
+                    };
                 }
             }
             Ok(())
@@ -112,7 +103,7 @@ async fn fallible_main(cli: Cli) -> Result {
                     .parse_mode(ParseMode::Html)
                     .build();
                 let message = telegram.call(request).await?;
-                info!(message.id);
+                info!(?message, "Sent");
             }
             Ok(())
         }
