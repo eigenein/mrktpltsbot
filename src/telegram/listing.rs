@@ -1,3 +1,5 @@
+//! Listing rendering in Telegram.
+
 use chrono_humanize::HumanTime;
 use maud::{html, Markup, Render};
 
@@ -31,7 +33,7 @@ impl Render for Price {
             @match self {
                 Self::Fixed { asking } => { (Euro::from(*asking)) }
                 Self::OnRequest => { "on request" }
-                Self::MinBid { asking } => { (Euro::from(*asking)) " (bidding allowed)" }
+                Self::MinBid { asking } => { "bidding under " (Euro::from(*asking)) }
                 Self::SeeDescription => { "see description" }
                 Self::ToBeAgreed => { "to be agreed" }
                 Self::Reserved => { "reserved" }

@@ -1,11 +1,19 @@
 use std::time::Duration;
 
 use bon::builder;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 
 use crate::{
     client::DEFAULT_TIMEOUT,
-    telegram::objects::{ChatId, Message, Update, User},
+    telegram::objects::{
+        ChatId,
+        LinkPreviewOptions,
+        Message,
+        ParseMode,
+        ReplyMarkup,
+        Update,
+        User,
+    },
 };
 
 /// Telegram bot API method.
@@ -46,6 +54,7 @@ pub enum AllowedUpdate {
 /// Use this method to receive incoming updates using long polling. Returns an `Array` of `Update` objects.
 #[derive(Serialize)]
 #[must_use]
+#[builder]
 pub struct GetUpdates {
     /// Identifier of the first update to be returned.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -76,39 +85,9 @@ impl Method for GetUpdates {
     }
 }
 
-#[derive(Serialize)]
-#[must_use]
-pub enum ParseMode {
-    /// [HTML style][1].
-    ///
-    /// [1]: https://core.telegram.org/bots/api#html-style
-    #[serde(rename = "HTML")]
-    Html,
-}
-
-/// Describes the [options][1] used for link preview generation.
+/// [Send a message][1].
 ///
-/// [1]: https://core.telegram.org/bots/api#linkpreviewoptions
-#[derive(Default, Serialize)]
-#[must_use]
-#[builder]
-pub struct LinkPreviewOptions {
-    /// `true`, if the link preview is disabled
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub is_disabled: Option<bool>,
-
-    /// URL to use for the link preview.
-    ///
-    /// If empty, then the first URL found in the message text will be used
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
-
-    /// `true`, if the link preview must be shown above the message text;
-    /// otherwise, the link preview will be shown below the message text
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub show_above_text: Option<bool>,
-}
-
+/// [1]: https://core.telegram.org/bots/api#sendmessage
 #[derive(Serialize)]
 #[must_use]
 #[builder]
@@ -121,9 +100,28 @@ pub struct SendMessage<'a> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub link_preview_options: Option<LinkPreviewOptions>,
+
+    #[serde(
+        serialize_with = "serialize_reply_markup",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[builder(into)]
+    pub reply_markup: Option<ReplyMarkup<'a>>,
 }
 
 impl Method for SendMessage<'_> {
     const NAME: &'static str = "sendMessage";
     type Response = Message;
+}
+
+fn serialize_reply_markup<S: Serializer>(
+    reply_markup: &Option<ReplyMarkup>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let reply_markup = reply_markup
+        .as_ref()
+        .expect("`reply_markup` should not be `None`");
+    let json = serde_json::to_string(&reply_markup)
+        .map_err(|error| serde::ser::Error::custom(format!("{error:#}")))?;
+    serializer.serialize_str(&json)
 }
