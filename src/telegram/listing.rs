@@ -1,13 +1,22 @@
 //! Listing rendering in Telegram.
 
-use std::{collections::VecDeque, iter::once};
+use std::{borrow::Cow, collections::VecDeque, iter::once};
 
 use chrono_humanize::HumanTime;
 use maud::{html, Markup, Render};
 use url::Url;
 
 use crate::{
-    marktplaats::listing::{Euro, Listing, Location, Price, Seller},
+    marktplaats::listing::{
+        Attribute,
+        Condition,
+        Delivery,
+        Euro,
+        Listing,
+        Location,
+        Price,
+        Seller,
+    },
     telegram::{
         methods::{InputMediaPhoto, Media, SendMediaGroup, SendMessage, SendPhoto},
         objects::{ChatId, LinkPreviewOptions, ParseMode},
@@ -20,6 +29,9 @@ impl Render for Listing {
             strong { a href=(self.https_url()) { (self.title) } }
             "\n\n"
             (self.price)
+            @for attribute in &self.attributes {
+                (attribute)
+            }
             "\n\n"
             blockquote expandable { (self.description()) }
             "\n\n"
@@ -60,15 +72,12 @@ impl Render for Euro {
 
 impl Render for Location {
     fn render(&self) -> Markup {
-        let url = match (self.latitude, self.longitude) {
-            (Some(latitude), Some(longitude)) => Url::parse_with_params(
-                "https://maps.apple.com/maps",
-                &[("ll", &format!("{latitude},{longitude}"))],
-            ),
-            _ => Url::parse_with_params("https://maps.apple.com/maps", &[("q", &self.city_name)]),
-        };
+        let mut query = vec![("q", Cow::Borrowed(self.city_name.as_ref()))];
+        if let (Some(latitude), Some(longitude)) = (self.latitude, self.longitude) {
+            query.push(("ll", Cow::Owned(format!("{latitude},{longitude}"))));
+        }
         html! {
-            @match url {
+            @match Url::parse_with_params("https://maps.apple.com/maps", &query) {
                 Ok(url) => { a href=(url) { (self.city_name) } },
                 Err(_) => (self.city_name)
             }
@@ -81,6 +90,44 @@ impl Render for Seller {
         html! {
             a href=(format!("https://www.marktplaats.nl/u/{}/{}/", self.name, self.id)) {
                 "@" (self.name)
+            }
+        }
+    }
+}
+
+impl Render for Attribute {
+    fn render(&self) -> Markup {
+        html! {
+            @match self {
+                Self::Condition(condition) => { strong { " • " } (condition) },
+                Self::Delivery(delivery) => { strong { " • " } (delivery) },
+                Self::Other(_) => {},
+            }
+        }
+    }
+}
+
+impl Render for Condition {
+    fn render(&self) -> Markup {
+        html! {
+            @match self {
+                Self::New => "🟢 new",
+                Self::AsGoodAsNew => "🟡 as good as new",
+                Self::Refurbished => "🟡 as good as new",
+                Self::Used => "🟠 used",
+                Self::NotWorking => "⛔️ not working",
+            }
+        }
+    }
+}
+
+impl Render for Delivery {
+    fn render(&self) -> Markup {
+        html! {
+            @match self {
+                Self::CollectionOnly => "🚶 collection",
+                Self::ShippingOnly => "📦 shipping",
+                Self::CollectionOrShipping => { (Self::CollectionOnly) strong { " • " } (Self::ShippingOnly) }
             }
         }
     }

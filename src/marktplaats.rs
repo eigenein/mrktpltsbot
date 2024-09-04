@@ -15,7 +15,7 @@ impl Marktplaats {
     /// # Returns
     ///
     /// Raw response payload.
-    #[instrument(skip_all, fields(query = request.query), ret(level = Level::DEBUG), err(level = Level::DEBUG))]
+    #[instrument(skip_all, fields(query = request.query), ret(Display, level = Level::DEBUG), err(level = Level::DEBUG))]
     pub async fn search(&self, request: &SearchRequest<'_>) -> Result<String> {
         let query =
             serde_qs::to_string(request).context("failed to serialize the search request")?;
