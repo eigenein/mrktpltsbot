@@ -15,6 +15,7 @@ use crate::{
 
 mod cli;
 mod client;
+mod db;
 mod logging;
 mod marktplaats;
 mod prelude;

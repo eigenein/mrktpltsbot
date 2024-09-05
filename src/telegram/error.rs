@@ -12,10 +12,8 @@ use crate::prelude::*;
 pub enum TelegramError {
     #[error("too many requests, retry after {} secs", retry_after.secs)]
     TooManyRequests {
-        #[allow(dead_code)]
         ok: MustBe!(false),
 
-        #[allow(dead_code)]
         error_code: MustBe!(429),
 
         #[serde(rename = "parameters")]
@@ -24,7 +22,6 @@ pub enum TelegramError {
 
     #[error("({error_code}) {description}")]
     OtherApiError {
-        #[allow(dead_code)]
         ok: MustBe!(false),
 
         description: String,

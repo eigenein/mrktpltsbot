@@ -20,7 +20,7 @@ impl IntoIterator for Listings {
 pub struct Listing {
     /// Marktplaats item ID, looks like `m2137081815`.
     #[serde(rename = "itemId")]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub item_id: String,
 
     /// Advertisement title.
@@ -42,7 +42,7 @@ pub struct Listing {
 
     /// Low-quality image URLs **without schema**.
     #[serde(default, rename = "imageUrls")]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub image_urls: Vec<String>,
 
     #[serde(rename = "priceInfo")]
@@ -62,12 +62,10 @@ pub struct Listing {
 }
 
 impl Listing {
-    #[allow(dead_code)]
     pub fn https_url(&self) -> String {
         format!("https://www.marktplaats.nl{}", self.url_path)
     }
 
-    #[allow(dead_code)]
     pub fn description(&self) -> &str {
         self.category_specific_description
             .as_deref()
@@ -85,7 +83,7 @@ pub struct Seller {
 }
 
 impl Listing {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn image_urls(&self) -> impl Iterator<Item = &str> {
         self.pictures.iter().filter_map(|picture| {
             picture
@@ -152,18 +150,15 @@ impl From<Cents> for Euro {
 }
 
 #[derive(Deserialize, Debug)]
-#[allow(clippy::struct_field_names)]
+#[expect(clippy::struct_field_names)]
 pub struct Picture {
     #[serde(rename = "extraExtraLargeUrl", default)]
-    #[allow(dead_code)]
     pub extra_large_url: Option<String>,
 
     #[serde(rename = "largeUrl", default)]
-    #[allow(dead_code)]
     pub large_url: Option<String>,
 
     #[serde(rename = "mediumUrl", default)]
-    #[allow(dead_code)]
     pub medium_url: Option<String>,
 }
 
@@ -182,11 +177,9 @@ pub struct Location {
     pub city_name: String,
 
     #[serde(default)]
-    #[allow(dead_code)]
     pub latitude: Option<f64>,
 
     #[serde(default)]
-    #[allow(dead_code)]
     pub longitude: Option<f64>,
 }
 
@@ -200,7 +193,7 @@ pub enum Attribute {
     Delivery(Delivery),
 
     #[serde(untagged)]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     Other(OtherAttribute),
 }
 
@@ -234,7 +227,7 @@ pub enum Delivery {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub struct OtherAttribute {
     pub key: String,
     pub value: String,
