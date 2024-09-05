@@ -67,15 +67,14 @@ pub struct SearchRequest<'a> {
 #[derive(Serialize)]
 pub enum SortBy {
     #[serde(rename = "OPTIMIZED")]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     Optimized,
 
     #[serde(rename = "SORT_INDEX")]
-    #[allow(dead_code)]
     SortIndex,
 
     #[serde(rename = "PRICE")]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     Price,
 }
 
@@ -83,11 +82,10 @@ pub enum SortBy {
 #[derive(Serialize)]
 pub enum SortOrder {
     #[serde(rename = "INCREASING")]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     Increasing,
 
     #[serde(rename = "DECREASING")]
-    #[allow(dead_code)]
     Decreasing,
 }
 

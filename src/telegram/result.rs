@@ -10,13 +10,7 @@ use crate::telegram::error::TelegramError;
 #[must_use]
 #[serde(untagged)]
 pub enum TelegramResult<T> {
-    Ok {
-        #[allow(dead_code)]
-        ok: MustBe!(true),
-
-        result: T,
-    },
-
+    Ok { ok: MustBe!(true), result: T },
     Err(TelegramError),
 }
 
