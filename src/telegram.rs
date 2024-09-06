@@ -2,6 +2,7 @@ pub mod error;
 pub mod listing;
 pub mod methods;
 pub mod objects;
+pub mod render;
 pub mod result;
 
 use std::{fmt::Debug, time::Duration};
