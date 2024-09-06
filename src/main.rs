@@ -69,22 +69,9 @@ async fn fallible_main(cli: Cli) -> Result {
             for listing in listings {
                 info!(listing.item_id, listing.title, " Found advertisement");
                 if let Some(chat_id) = chat_id {
-                    match SendListingRequest::build(ChatId::Integer(chat_id), &listing) {
-                        SendListingRequest::Message(request) => {
-                            let message = telegram.call(&request).await?;
-                            info!(message.id, "Sent");
-                        }
-                        SendListingRequest::Photo(request) => {
-                            let message = telegram.call(&request).await?;
-                            info!(message.id, "Sent");
-                        }
-                        SendListingRequest::MediaGroup(request) => {
-                            let messages = telegram.call(&request).await?;
-                            for message in messages {
-                                info!(message.id, "Sent");
-                            }
-                        }
-                    };
+                    SendListingRequest::from(ChatId::Integer(chat_id), &listing)
+                        .call_on(&telegram)
+                        .await?;
                 }
             }
 
