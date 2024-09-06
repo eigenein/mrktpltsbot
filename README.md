@@ -1,28 +1,8 @@
 # `mrktpltsbot`
 
-Periodically polls [Marktplaats](https://www.marktplaats.nl/) for the specified search queries and notifies the user about new items via [Telegram](https://telegram.org/).
-
-[![Crates.io](https://img.shields.io/crates/v/mrktpltsbot?logo=rust)](https://crates.io/crates/mrktpltsbot)
-[![Crates.io](https://img.shields.io/crates/l/mrktpltsbot)](https://crates.io/crates/mrktpltsbot)
-[![GitHub last commit](https://img.shields.io/github/last-commit/eigenein/mrktpltsbot?logo=github)](https://github.com/eigenein/mrktpltsbot/commits/master)
-
-## Usage
-
-```shell script
-mrktpltsbot <bot-token> -c <allowed-chat-id> ...
-```
-
-### Supported commands
-
-- `/subscribe <query>`
-- `/unsubscribe <subscription ID>`
-- `/search <query>` – preview the top 1 result
-- For a plain text message the bot will suggest you to subscribe to the search query
-
-### Allow list
-
-The bot allows only the specified chat IDs to interact with itself. To find out a chat ID you can run the bot without a `-c` option and send it a message. It will respond with the chat ID that you have to add to the parameters.
-
-### Monitoring
-
-The bot supports the `--sentry-dsn` option to integrate with [Sentry](https://sentry.io).
+[![Crates.io](https://img.shields.io/crates/v/mrktpltsbot?logo=rust&style=for-the-badge)](https://crates.io/crates/mrktpltsbot)
+[![Crates.io](https://img.shields.io/crates/l/mrktpltsbot?style=for-the-badge)](https://crates.io/crates/mrktpltsbot)
+[![Check status](https://img.shields.io/github/actions/workflow/status/eigenein/mrktpltsbot/check.yaml?style=for-the-badge)]((https://github.com/eigenein/mrktpltsbot/actions/workflows/check.yaml))
+[![Code coverage](https://img.shields.io/codecov/c/github/eigenein/mrktpltsbot?style=for-the-badge)
+](https://app.codecov.io/gh/eigenein/mrktpltsbot)
+![Maintenance](https://img.shields.io/maintenance/yes/2024?style=for-the-badge)
