@@ -3,6 +3,7 @@ use clap::Parser;
 use crate::{
     cli::{Cli, Command},
     client::build_client,
+    db::Db,
     marktplaats::{listing::Listings, Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
@@ -31,6 +32,7 @@ async fn main() -> Result {
 }
 
 async fn fallible_main(cli: Cli) -> Result {
+    let db = Db::new(&cli.db).await?;
     let client = build_client()?;
     let marktplaats = Marktplaats(client.clone());
     let telegram = Telegram::new(client, cli.bot_token);
@@ -52,26 +54,32 @@ async fn fallible_main(cli: Cli) -> Result {
                 .sort_order(SortOrder::Decreasing)
                 .search_in_title_and_description(true)
                 .build();
+
             let listings: Listings = serde_json::from_str(&marktplaats.search(&request).await?)?;
+            info!(n_listings = listings.listings.len());
+
             for listing in listings {
-                info!(?listing, "Found advertisement");
+                info!(listing.item_id, listing.title, " Found advertisement");
                 if let Some(chat_id) = chat_id {
                     match SendListingRequest::build(ChatId::Integer(chat_id), &listing) {
                         SendListingRequest::Message(request) => {
                             let message = telegram.call(request).await?;
-                            info!(?message, "Sent");
+                            info!(message.id, "Sent");
                         }
                         SendListingRequest::Photo(request) => {
                             let message = telegram.call(request).await?;
-                            info!(?message, "Sent");
+                            info!(message.id, "Sent");
                         }
                         SendListingRequest::MediaGroup(request) => {
                             let messages = telegram.call(request).await?;
-                            info!(?messages, "Sent");
+                            for message in messages {
+                                info!(message.id, "Sent");
+                            }
                         }
                     };
                 }
             }
+
             Ok(())
         }
 
@@ -88,11 +96,14 @@ async fn fallible_main(cli: Cli) -> Result {
                 timeout_secs: args.timeout_secs,
                 allowed_updates: args.allowed_updates,
             };
+
             let updates = telegram.call(request).await?;
             info!(n_updates = updates.len());
+
             for update in updates {
                 info!(update.id, ?update.payload, "Received");
             }
+
             Ok(())
         }
 

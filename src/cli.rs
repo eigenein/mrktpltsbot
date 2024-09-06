@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 
 use crate::telegram::methods::AllowedUpdate;
@@ -5,11 +7,18 @@ use crate::telegram::methods::AllowedUpdate;
 #[derive(Parser)]
 #[command(author, version, about, long_about, propagate_version = true)]
 pub struct Cli {
+    /// Sentry DSN: <https://docs.sentry.io/concepts/key-terms/dsn-explainer/>.
     #[clap(long, env = "SENTRY_DSN")]
     pub sentry_dsn: Option<String>,
 
-    #[clap(long = "bot-token", env = "BOT_TOKEN")]
+    /// Telegram bot token: <https://core.telegram.org/bots/api#authorizing-your-bot>.
+    #[clap(long, env = "BOT_TOKEN")]
     pub bot_token: String,
+
+    /// SQLite database path.
+    #[expect(clippy::doc_markdown)]
+    #[clap(long, env = "DB", default_value = "mrktpltsbot.sqlite3")]
+    pub db: PathBuf,
 
     #[command(subcommand)]
     pub command: Command,

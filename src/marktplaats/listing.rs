@@ -20,7 +20,6 @@ impl IntoIterator for Listings {
 pub struct Listing {
     /// Marktplaats item ID, looks like `m2137081815`.
     #[serde(rename = "itemId")]
-    #[expect(dead_code)]
     pub item_id: String,
 
     /// Advertisement title.
