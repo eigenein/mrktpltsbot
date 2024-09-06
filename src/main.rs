@@ -1,6 +1,7 @@
 use clap::Parser;
 
 use crate::{
+    bot::Bot,
     cli::{Cli, Command},
     client::build_client,
     db::Db,
@@ -8,12 +9,13 @@ use crate::{
     prelude::*,
     telegram::{
         listing::SendListingRequest,
-        methods::{GetMe, GetUpdates, SendMessage},
+        methods::{GetMe, GetUpdates, Method, SendMessage},
         objects::{ChatId, ParseMode},
         Telegram,
     },
 };
 
+mod bot;
 mod cli;
 mod client;
 mod db;
@@ -38,9 +40,15 @@ async fn fallible_main(cli: Cli) -> Result {
     let telegram = Telegram::new(client, cli.bot_token);
 
     match cli.command {
-        Command::Run(_args) => {
-            unimplemented!()
-        }
+        Command::Run(args) => Bot::builder()
+            .telegram(telegram)
+            .marktplaats(marktplaats)
+            .db(db)
+            .timeout_secs(args.timeout_secs)
+            .build()
+            .run_telegram()
+            .await
+            .context("fatal error"),
 
         Command::QuickSearch {
             query,
@@ -63,15 +71,15 @@ async fn fallible_main(cli: Cli) -> Result {
                 if let Some(chat_id) = chat_id {
                     match SendListingRequest::build(ChatId::Integer(chat_id), &listing) {
                         SendListingRequest::Message(request) => {
-                            let message = telegram.call(request).await?;
+                            let message = telegram.call(&request).await?;
                             info!(message.id, "Sent");
                         }
                         SendListingRequest::Photo(request) => {
-                            let message = telegram.call(request).await?;
+                            let message = telegram.call(&request).await?;
                             info!(message.id, "Sent");
                         }
                         SendListingRequest::MediaGroup(request) => {
-                            let messages = telegram.call(request).await?;
+                            let messages = telegram.call(&request).await?;
                             for message in messages {
                                 info!(message.id, "Sent");
                             }
@@ -84,20 +92,20 @@ async fn fallible_main(cli: Cli) -> Result {
         }
 
         Command::GetMe => {
-            let user = telegram.call(GetMe).await?;
+            let user = telegram.call(&GetMe).await?;
             info!(user.id, user.username, "I am");
             Ok(())
         }
 
         Command::GetUpdates(args) => {
-            let request = GetUpdates {
+            let updates = GetUpdates {
                 offset: args.offset,
                 limit: args.limit,
                 timeout_secs: args.timeout_secs,
-                allowed_updates: args.allowed_updates,
-            };
-
-            let updates = telegram.call(request).await?;
+                allowed_updates: args.allowed_updates.as_deref(),
+            }
+            .call_on(&telegram)
+            .await?;
             info!(n_updates = updates.len());
 
             for update in updates {
@@ -108,13 +116,13 @@ async fn fallible_main(cli: Cli) -> Result {
         }
 
         Command::SendMessage(args) => {
+            let request = SendMessage::builder()
+                .chat_id(ChatId::Integer(args.chat_id))
+                .text(&args.html)
+                .parse_mode(ParseMode::Html)
+                .build();
             for _ in 0..args.repeat {
-                let request = SendMessage::builder()
-                    .chat_id(ChatId::Integer(args.chat_id))
-                    .text(&args.html)
-                    .parse_mode(ParseMode::Html)
-                    .build();
-                let message = telegram.call(request).await?;
+                let message = request.call_on(&telegram).await?;
                 info!(?message, "Sent");
             }
             Ok(())

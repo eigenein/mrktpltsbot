@@ -27,7 +27,7 @@ pub struct Cli {
 #[derive(Parser)]
 pub struct GetUpdates {
     #[clap(long)]
-    pub offset: Option<u32>,
+    pub offset: Option<u64>,
 
     #[clap(long)]
     pub limit: Option<u32>,
@@ -53,7 +53,11 @@ pub struct SendMessage {
 }
 
 #[derive(Parser)]
-pub struct Run {}
+pub struct Run {
+    /// Timeout in seconds for long polling.
+    #[clap(long = "timeout", env = "TIMEOUT", default_value = "60")]
+    pub timeout_secs: u64,
+}
 
 #[derive(Subcommand)]
 pub enum Command {
