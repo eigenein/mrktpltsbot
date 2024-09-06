@@ -57,7 +57,6 @@ pub enum ChatId {
 #[must_use]
 pub struct Message {
     #[serde(rename = "message_id")]
-    #[expect(dead_code)]
     pub id: u32,
 
     #[serde(default)]
