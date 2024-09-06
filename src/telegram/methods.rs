@@ -1,11 +1,12 @@
-use std::{borrow::Cow, time::Duration};
+use std::{borrow::Cow, fmt::Debug, time::Duration};
 
 use bon::builder;
-use serde::{Serialize, Serializer};
+use serde::{de::DeserializeOwned, Serialize, Serializer};
 
 use crate::{
     client::DEFAULT_TIMEOUT,
-    telegram::objects::{ChatId, LinkPreviewOptions, Message, ParseMode, Update, User},
+    prelude::*,
+    telegram::{error::TelegramError, objects::*, Telegram},
 };
 
 /// Telegram bot API method.
@@ -13,10 +14,14 @@ pub trait Method: Serialize {
     /// Method name.
     const NAME: &'static str;
 
-    type Response;
+    type Response: Debug + DeserializeOwned;
 
     fn timeout(&self) -> Duration {
         DEFAULT_TIMEOUT
+    }
+
+    async fn call_on(&self, telegram: &Telegram) -> Result<Self::Response, TelegramError> {
+        telegram.call(self).await
     }
 }
 
@@ -47,10 +52,10 @@ pub enum AllowedUpdate {
 #[derive(Serialize)]
 #[must_use]
 #[builder]
-pub struct GetUpdates {
+pub struct GetUpdates<'a> {
     /// Identifier of the first update to be returned.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u32>,
+    pub offset: Option<u64>,
 
     /// Limits the number of updates to be retrieved. Values between 1-100 are accepted. Defaults to 100.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -64,10 +69,10 @@ pub struct GetUpdates {
     pub timeout_secs: Option<u64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub allowed_updates: Option<Vec<AllowedUpdate>>,
+    pub allowed_updates: Option<&'a [AllowedUpdate]>,
 }
 
-impl Method for GetUpdates {
+impl<'a> Method for GetUpdates<'a> {
     const NAME: &'static str = "getUpdates";
 
     type Response = Vec<Update>;
@@ -84,6 +89,7 @@ impl Method for GetUpdates {
 #[must_use]
 #[builder]
 pub struct SendMessage<'a> {
+    #[builder(into)]
     pub chat_id: ChatId,
 
     #[builder(into)]
@@ -94,6 +100,9 @@ pub struct SendMessage<'a> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub link_preview_options: Option<LinkPreviewOptions>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_parameters: Option<ReplyParameters>,
 }
 
 impl Method for SendMessage<'_> {

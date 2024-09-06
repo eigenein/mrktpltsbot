@@ -4,10 +4,11 @@ pub mod methods;
 pub mod objects;
 pub mod result;
 
-use std::fmt::Debug;
+use std::{fmt::Debug, time::Duration};
 
 use reqwest::Client;
 use serde::de::DeserializeOwned;
+use tokio::time::sleep;
 
 use crate::{
     prelude::*,
@@ -26,29 +27,33 @@ impl Telegram {
     }
 
     #[instrument(skip_all, fields(method = R::NAME), ret(level = Level::DEBUG), err(level = Level::DEBUG))]
-    pub async fn call<R>(&self, request: R) -> Result<R::Response, TelegramError>
+    pub async fn call<R>(&self, request: &R) -> Result<R::Response, TelegramError>
     where
-        R: Method,
+        R: Method + ?Sized,
         R::Response: Debug + DeserializeOwned,
     {
-        let response = self
-            .client
-            .post(format!(
-                "https://api.telegram.org/bot{}/{}",
-                self.token,
-                R::NAME
-            ))
-            .json(&request)
-            .timeout(request.timeout())
-            .send()
-            .await
-            .with_context(|| format!("failed to call `{}`", R::NAME))?
-            .text()
-            .await
-            .with_context(|| format!("failed to read `{}` response", R::NAME))?;
-        debug!(response);
-        serde_json::from_str::<TelegramResult<R::Response>>(&response)
-            .with_context(|| format!("failed to deserialize `{}` response", R::NAME))?
-            .into()
+        let url = format!("https://api.telegram.org/bot{}/{}", self.token, R::NAME);
+        loop {
+            let response = self
+                .client
+                .post(&url)
+                .json(&request)
+                .timeout(request.timeout())
+                .send()
+                .await
+                .with_context(|| format!("failed to call `{}`", R::NAME))?
+                .text()
+                .await
+                .with_context(|| format!("failed to read `{}` response", R::NAME))?;
+            trace!(response, "Got raw response");
+            let result = serde_json::from_str::<TelegramResult<R::Response>>(&response)
+                .with_context(|| format!("failed to deserialize `{}` response", R::NAME))?;
+            match result {
+                TelegramResult::Err(TelegramError::TooManyRequests { retry_after, .. }) => {
+                    sleep(Duration::from_secs(retry_after.secs)).await;
+                }
+                _ => break result.into(),
+            }
+        }
     }
 }
