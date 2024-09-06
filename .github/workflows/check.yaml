@@ -23,6 +23,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: ⬆️ Update Rust
+        run: rustup update --no-self-update
+
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
