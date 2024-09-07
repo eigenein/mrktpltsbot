@@ -8,7 +8,7 @@ use crate::{
     marktplaats::{Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
-        listing::SendListingRequest,
+        listing::ListingView,
         methods::{GetMe, GetUpdates, Method, SendMessage},
         objects::{ChatId, ParseMode},
         Telegram,
@@ -64,12 +64,12 @@ async fn fallible_main(cli: Cli) -> Result {
                 .build();
 
             let listings = marktplaats.search(&request).await?;
-            info!(n_listings = listings.listings.len());
+            info!(n_listings = listings.inner.len());
 
             for listing in listings {
                 info!(listing.item_id, listing.title, "Found advertisement");
                 if let Some(chat_id) = chat_id {
-                    SendListingRequest::with(ChatId::Integer(chat_id), &listing)
+                    ListingView::with(ChatId::Integer(chat_id), &listing)
                         .call_on(&telegram)
                         .await?;
                 }

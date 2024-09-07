@@ -8,7 +8,7 @@ use crate::{
     marktplaats::{Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
-        listing::SendListingRequest,
+        listing::ListingView,
         methods::{AllowedUpdate, GetUpdates, Method, SendMessage},
         objects::{ReplyParameters, Update, UpdatePayload},
         Telegram,
@@ -95,8 +95,8 @@ impl Bot {
                 .search_in_title_and_description(true)
                 .build();
             let mut listings = self.marktplaats.search(&request).await?;
-            if let Some(listing) = listings.listings.pop() {
-                SendListingRequest::with(chat.id.into(), &listing)
+            if let Some(listing) = listings.inner.pop() {
+                ListingView::with(chat.id.into(), &listing)
                     .call_on(&self.telegram)
                     .await?;
             } else {
