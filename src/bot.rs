@@ -55,14 +55,14 @@ impl Bot {
         for update in updates {
             info!(update.id, "Received update");
             self.offset.store(update.id + 1, Ordering::Relaxed);
-            self.handle_update(update).await?;
+            self.on_update(update).await?;
         }
 
         Ok(())
     }
 
     #[instrument(skip_all, fields(update.id = update.id))]
-    async fn handle_update(&self, update: Update) -> Result {
+    async fn on_update(&self, update: Update) -> Result {
         let UpdatePayload::Message(message) = update.payload else {
             unreachable!("message is the only allowed update type")
         };

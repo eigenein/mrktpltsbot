@@ -1,3 +1,4 @@
+-- Marktplaats items.
 CREATE TABLE items
 (
     -- Item ID, for example `m2153223840`.
@@ -7,6 +8,7 @@ CREATE TABLE items
     updated_at INTEGER NOT NULL
 );
 
+-- Search query subscriptions.
 CREATE TABLE subscriptions
 (
     -- Base58-encoded UUID.
@@ -17,6 +19,7 @@ CREATE TABLE subscriptions
     query   TEXT    NOT NULL
 );
 
+-- Sent notifications.
 CREATE TABLE notifications
 (
     item_id    TEXT    NOT NULL REFERENCES items (id) ON UPDATE CASCADE ON DELETE CASCADE,
