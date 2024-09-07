@@ -5,9 +5,10 @@ use bon::builder;
 
 use crate::{
     db::Db,
-    marktplaats::Marktplaats,
+    marktplaats::{Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
+        listing::SendListingRequest,
         methods::{AllowedUpdate, GetUpdates, Method, SendMessage},
         objects::{ReplyParameters, Update, UpdatePayload},
         Telegram,
@@ -29,9 +30,13 @@ impl Bot {
     pub async fn run_telegram(&self) -> Result {
         info!("Running Telegram bot…");
         loop {
-            backoff::future::retry(ExponentialBackoff::default(), || async {
-                Ok(self.handle_telegram_updates().await?)
-            })
+            backoff::future::retry_notify(
+                ExponentialBackoff::default(),
+                || async { Ok(self.handle_telegram_updates().await?) },
+                |error, _| {
+                    warn!("Bot iteration failed: {error:#}");
+                },
+            )
             .await
             .context("fatal error")?;
         }
@@ -68,21 +73,41 @@ impl Bot {
             return Ok(());
         };
 
+        let reply_parameters = ReplyParameters::builder()
+            .message_id(message.id)
+            .allow_sending_without_reply(true)
+            .build();
+
         if text.starts_with('/') {
             let _ = SendMessage::builder()
                 .chat_id(chat.id)
                 .text("I can't answer commands just yet")
-                .reply_parameters(
-                    ReplyParameters::builder()
-                        .message_id(message.id)
-                        .allow_sending_without_reply(true)
-                        .build(),
-                )
+                .reply_parameters(reply_parameters)
                 .build()
                 .call_on(&self.telegram)
                 .await?;
         } else {
-            todo!()
+            let request = SearchRequest::builder()
+                .query(&text)
+                .limit(1)
+                .sort_by(SortBy::SortIndex)
+                .sort_order(SortOrder::Decreasing)
+                .search_in_title_and_description(true)
+                .build();
+            let mut listings = self.marktplaats.search(&request).await?;
+            if let Some(listing) = listings.listings.pop() {
+                SendListingRequest::with(chat.id.into(), &listing)
+                    .call_on(&self.telegram)
+                    .await?;
+            } else {
+                let _ = SendMessage::builder()
+                    .chat_id(chat.id)
+                    .text("There is no item matching the search query")
+                    .reply_parameters(reply_parameters)
+                    .build()
+                    .call_on(&self.telegram)
+                    .await?;
+            }
         }
 
         Ok(())

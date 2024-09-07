@@ -4,7 +4,7 @@ use bon::builder;
 use reqwest::Url;
 use serde::Serialize;
 
-use crate::prelude::*;
+use crate::{marktplaats::listing::Listings, prelude::*};
 
 #[must_use]
 pub struct Marktplaats(pub reqwest::Client);
@@ -15,8 +15,8 @@ impl Marktplaats {
     /// # Returns
     ///
     /// Raw response payload.
-    #[instrument(skip_all, fields(query = request.query), ret(Display, level = Level::DEBUG), err(level = Level::DEBUG))]
-    pub async fn search(&self, request: &SearchRequest<'_>) -> Result<String> {
+    #[instrument(skip_all, fields(query = request.query), ret(Debug, level = Level::DEBUG), err(level = Level::DEBUG))]
+    pub async fn search(&self, request: &SearchRequest<'_>) -> Result<Listings> {
         let query =
             serde_qs::to_string(request).context("failed to serialize the search request")?;
         let mut url = Url::parse("https://www.marktplaats.nl/lrp/api/search")?;
@@ -27,9 +27,9 @@ impl Marktplaats {
             .await
             .with_context(|| format!("failed to search `{query}`"))?
             .error_for_status()?
-            .text()
+            .json()
             .await
-            .with_context(|| format!("failed to read search response for `{query}`"))
+            .with_context(|| format!("failed to parse search response for `{query}`"))
     }
 }
 

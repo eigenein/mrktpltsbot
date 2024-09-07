@@ -5,7 +5,7 @@ use crate::{
     cli::{Cli, Command},
     client::build_client,
     db::Db,
-    marktplaats::{listing::Listings, Marktplaats, SearchRequest, SortBy, SortOrder},
+    marktplaats::{Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
         listing::SendListingRequest,
@@ -63,11 +63,11 @@ async fn fallible_main(cli: Cli) -> Result {
                 .search_in_title_and_description(true)
                 .build();
 
-            let listings: Listings = serde_json::from_str(&marktplaats.search(&request).await?)?;
+            let listings = marktplaats.search(&request).await?;
             info!(n_listings = listings.listings.len());
 
             for listing in listings {
-                info!(listing.item_id, listing.title, " Found advertisement");
+                info!(listing.item_id, listing.title, "Found advertisement");
                 if let Some(chat_id) = chat_id {
                     SendListingRequest::with(ChatId::Integer(chat_id), &listing)
                         .call_on(&telegram)

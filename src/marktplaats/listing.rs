@@ -2,7 +2,7 @@ use chrono::{DateTime, Local};
 use rust_decimal::Decimal;
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Listings {
     pub listings: Vec<Listing>,
 }
