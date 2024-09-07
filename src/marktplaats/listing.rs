@@ -4,7 +4,8 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Listings {
-    pub listings: Vec<Listing>,
+    #[serde(rename = "listings")]
+    pub inner: Vec<Listing>,
 }
 
 impl IntoIterator for Listings {
@@ -12,7 +13,7 @@ impl IntoIterator for Listings {
     type IntoIter = <Vec<Listing> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.listings.into_iter()
+        self.inner.into_iter()
     }
 }
 

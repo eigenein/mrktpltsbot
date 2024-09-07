@@ -12,32 +12,31 @@ use crate::{
     },
 };
 
-/// Telegram request to send the corresponding listing.
-pub enum SendListingRequest<'a> {
+pub enum ListingView<'a> {
     Message(SendMessage<'a>),
     Photo(SendPhoto<'a>),
     MediaGroup(SendMediaGroup<'a>),
 }
 
-impl<'a> From<SendMessage<'a>> for SendListingRequest<'a> {
+impl<'a> From<SendMessage<'a>> for ListingView<'a> {
     fn from(send_message: SendMessage<'a>) -> Self {
         Self::Message(send_message)
     }
 }
 
-impl<'a> From<SendPhoto<'a>> for SendListingRequest<'a> {
+impl<'a> From<SendPhoto<'a>> for ListingView<'a> {
     fn from(send_photo: SendPhoto<'a>) -> Self {
         Self::Photo(send_photo)
     }
 }
 
-impl<'a> From<SendMediaGroup<'a>> for SendListingRequest<'a> {
+impl<'a> From<SendMediaGroup<'a>> for ListingView<'a> {
     fn from(send_media_group: SendMediaGroup<'a>) -> Self {
         Self::MediaGroup(send_media_group)
     }
 }
 
-impl<'a> SendListingRequest<'a> {
+impl<'a> ListingView<'a> {
     pub fn with(chat_id: ChatId, listing: &'a Listing) -> Self {
         let html = listing.render().into_string();
         let mut image_urls: VecDeque<&str> = listing
