@@ -19,48 +19,69 @@ pub enum SendListingRequest<'a> {
     MediaGroup(SendMediaGroup<'a>),
 }
 
+impl<'a> From<SendMessage<'a>> for SendListingRequest<'a> {
+    fn from(send_message: SendMessage<'a>) -> Self {
+        Self::Message(send_message)
+    }
+}
+
+impl<'a> From<SendPhoto<'a>> for SendListingRequest<'a> {
+    fn from(send_photo: SendPhoto<'a>) -> Self {
+        Self::Photo(send_photo)
+    }
+}
+
+impl<'a> From<SendMediaGroup<'a>> for SendListingRequest<'a> {
+    fn from(send_media_group: SendMediaGroup<'a>) -> Self {
+        Self::MediaGroup(send_media_group)
+    }
+}
+
 impl<'a> SendListingRequest<'a> {
-    pub fn from(chat_id: ChatId, listing: &'a Listing) -> Self {
+    pub fn with(chat_id: ChatId, listing: &'a Listing) -> Self {
         let html = listing.render().into_string();
         let mut image_urls: VecDeque<&str> = listing
             .pictures
             .iter()
             .filter_map(|picture| picture.any_url())
             .collect();
-        if image_urls.is_empty() {
-            let send_message = SendMessage::builder()
+
+        match image_urls.len() {
+            0 => SendMessage::builder()
                 .chat_id(chat_id)
                 .text(html)
                 .parse_mode(ParseMode::Html)
                 .link_preview_options(LinkPreviewOptions::builder().is_disabled(true).build())
-                .build();
-            Self::Message(send_message)
-        } else if image_urls.len() == 1 {
-            let send_photo = SendPhoto::builder()
+                .build()
+                .into(),
+
+            1 => SendPhoto::builder()
                 .chat_id(chat_id)
                 .photo(image_urls[0])
                 .caption(html)
                 .parse_mode(ParseMode::Html)
-                .build();
-            Self::Photo(send_photo)
-        } else {
-            let first_media = Media::InputMediaPhoto(
-                InputMediaPhoto::builder()
-                    .media(image_urls.pop_front().unwrap())
-                    .caption(html)
-                    .parse_mode(ParseMode::Html)
-                    .build(),
-            );
-            let other_media = image_urls
-                .into_iter()
-                .map(|url| InputMediaPhoto::builder().media(url).build())
-                .map(Media::InputMediaPhoto);
-            let media = once(first_media).chain(other_media).collect();
-            let send_media_group = SendMediaGroup::builder()
-                .chat_id(chat_id)
-                .media(media)
-                .build();
-            Self::MediaGroup(send_media_group)
+                .build()
+                .into(),
+
+            _ => {
+                let first_media = Media::InputMediaPhoto(
+                    InputMediaPhoto::builder()
+                        .media(image_urls.pop_front().unwrap())
+                        .caption(html)
+                        .parse_mode(ParseMode::Html)
+                        .build(),
+                );
+                let other_media = image_urls
+                    .into_iter()
+                    .map(|url| InputMediaPhoto::builder().media(url).build())
+                    .map(Media::InputMediaPhoto);
+                let media = once(first_media).chain(other_media).collect();
+                SendMediaGroup::builder()
+                    .chat_id(chat_id)
+                    .media(media)
+                    .build()
+                    .into()
+            }
         }
     }
 
