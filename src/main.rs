@@ -22,6 +22,7 @@ mod db;
 mod logging;
 mod marktplaats;
 mod prelude;
+mod serde;
 mod telegram;
 
 #[tokio::main]
