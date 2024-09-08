@@ -87,29 +87,45 @@ impl Bot {
                 .call_on(&self.telegram)
                 .await?;
         } else {
-            let request = SearchRequest::builder()
-                .query(&text)
-                .limit(1)
-                .sort_by(SortBy::SortIndex)
-                .sort_order(SortOrder::Decreasing)
-                .search_in_title_and_description(true)
-                .build();
-            let mut listings = self.marktplaats.search(&request).await?;
-            if let Some(listing) = listings.inner.pop() {
-                ListingView::with(chat.id.into(), &listing)
-                    .call_on(&self.telegram)
-                    .await?;
-            } else {
-                let _ = SendMessage::builder()
-                    .chat_id(chat.id)
-                    .text("There is no item matching the search query")
-                    .reply_parameters(reply_parameters)
-                    .build()
-                    .call_on(&self.telegram)
-                    .await?;
-            }
+            self.handle_search(&text.to_lowercase(), chat.id, reply_parameters)
+                .await?;
         }
 
+        Ok(())
+    }
+
+    async fn handle_search(
+        &self,
+        query: &str,
+        chat_id: i64,
+        reply_parameters: ReplyParameters,
+    ) -> Result {
+        self.db.insert_search_query(query).await?;
+        let request = SearchRequest::builder()
+            .query(query)
+            .limit(1)
+            .sort_by(SortBy::SortIndex)
+            .sort_order(SortOrder::Decreasing)
+            .search_in_title_and_description(true)
+            .build();
+        let mut listings = self.marktplaats.search(&request).await?;
+        if let Some(listing) = listings.inner.pop() {
+            ListingView::builder()
+                .chat_id(chat_id)
+                .listing(&listing)
+                .reply_parameters(reply_parameters)
+                .build()
+                .call_on(&self.telegram)
+                .await?;
+        } else {
+            let _ = SendMessage::builder()
+                .chat_id(chat_id)
+                .text("There is no item matching the search query")
+                .reply_parameters(reply_parameters)
+                .build()
+                .call_on(&self.telegram)
+                .await?;
+        }
         Ok(())
     }
 }

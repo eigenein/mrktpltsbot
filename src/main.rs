@@ -70,7 +70,10 @@ async fn fallible_main(cli: Cli) -> Result {
             for listing in listings {
                 info!(listing.item_id, listing.title, "Found advertisement");
                 if let Some(chat_id) = chat_id {
-                    ListingView::with(ChatId::Integer(chat_id), &listing)
+                    ListingView::builder()
+                        .chat_id(chat_id)
+                        .listing(&listing)
+                        .build()
                         .call_on(&telegram)
                         .await?;
                 }

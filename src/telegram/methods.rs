@@ -132,6 +132,9 @@ pub struct SendPhoto<'a> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show_caption_above_media: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_parameters: Option<ReplyParameters>,
 }
 
 impl Method for SendPhoto<'_> {
@@ -151,6 +154,9 @@ pub struct SendMediaGroup<'a> {
     /// A JSON-serialized array describing messages to be sent, must include 2-10 items.
     #[serde(serialize_with = "as_inner_json")]
     pub media: Vec<Media<'a>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_parameters: Option<ReplyParameters>,
 }
 
 impl Method for SendMediaGroup<'_> {
