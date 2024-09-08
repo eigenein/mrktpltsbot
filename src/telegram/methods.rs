@@ -1,11 +1,12 @@
 use std::{borrow::Cow, fmt::Debug, time::Duration};
 
 use bon::builder;
-use serde::{de::DeserializeOwned, Serialize, Serializer};
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
     client::DEFAULT_TIMEOUT,
     prelude::*,
+    serde::as_inner_json,
     telegram::{error::TelegramError, objects::*, Telegram},
 };
 
@@ -138,12 +139,6 @@ impl Method for SendPhoto<'_> {
     type Response = Message;
 }
 
-fn serialize_media<S: Serializer>(media: &[Media], serializer: S) -> Result<S::Ok, S::Error> {
-    let json = serde_json::to_string(media)
-        .map_err(|error| serde::ser::Error::custom(format!("{error:#}")))?;
-    serializer.serialize_str(&json)
-}
-
 /// Use this method to [send a group][1] of photos, videos, documents or audios as an album.
 ///
 /// [1]: https://core.telegram.org/bots/api#sendmediagroup
@@ -154,7 +149,7 @@ pub struct SendMediaGroup<'a> {
     pub chat_id: ChatId,
 
     /// A JSON-serialized array describing messages to be sent, must include 2-10 items.
-    #[serde(serialize_with = "serialize_media")]
+    #[serde(serialize_with = "as_inner_json")]
     pub media: Vec<Media<'a>>,
 }
 
