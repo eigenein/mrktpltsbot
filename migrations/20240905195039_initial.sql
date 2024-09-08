@@ -1,3 +1,11 @@
+CREATE TABLE search_queries
+(
+    -- SeaHash'ed search query,
+    hash INTEGER PRIMARY KEY,
+
+    text TEXT NOT NULL
+);
+
 -- Marktplaats items.
 CREATE TABLE items
 (
@@ -11,20 +19,20 @@ CREATE TABLE items
 -- Search query subscriptions.
 CREATE TABLE subscriptions
 (
-    -- Base58-encoded UUID.
-    id      TEXT PRIMARY KEY,
+    chat_id    INTEGER NOT NULL,
+    query_hash INTEGER NOT NULL REFERENCES search_queries (hash) ON UPDATE CASCADE ON DELETE CASCADE,
 
-    chat_id INTEGER NOT NULL,
-
-    query   TEXT    NOT NULL
+    PRIMARY KEY (chat_id, query_hash)
 );
 
 -- Sent notifications.
 CREATE TABLE notifications
 (
     item_id    TEXT    NOT NULL REFERENCES items (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    chat_id    INTEGER NOT NULL REFERENCES subscriptions (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    chat_id    INTEGER NOT NULL,
+    query_hash INTEGER NOT NULL,
     message_id INTEGER NOT NULL,
 
-    PRIMARY KEY (item_id, chat_id)
+    PRIMARY KEY (item_id, chat_id),
+    FOREIGN KEY (chat_id, query_hash) REFERENCES subscriptions (chat_id, query_hash) ON UPDATE CASCADE ON DELETE CASCADE
 );

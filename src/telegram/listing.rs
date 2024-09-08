@@ -1,5 +1,6 @@
 use std::{collections::VecDeque, iter::once};
 
+use bon::bon;
 use maud::Render;
 
 use crate::{
@@ -7,7 +8,7 @@ use crate::{
     prelude::*,
     telegram::{
         methods::{InputMediaPhoto, Media, SendMediaGroup, SendMessage, SendPhoto},
-        objects::{ChatId, LinkPreviewOptions, ParseMode},
+        objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters},
         Telegram,
     },
 };
@@ -36,8 +37,14 @@ impl<'a> From<SendMediaGroup<'a>> for ListingView<'a> {
     }
 }
 
+#[bon]
 impl<'a> ListingView<'a> {
-    pub fn with(chat_id: ChatId, listing: &'a Listing) -> Self {
+    #[builder]
+    pub fn new(
+        listing: &'a Listing,
+        #[builder(into)] chat_id: ChatId,
+        reply_parameters: Option<ReplyParameters>,
+    ) -> Self {
         let html = listing.render().into_string();
         let mut image_urls: VecDeque<&str> = listing
             .pictures
@@ -51,6 +58,7 @@ impl<'a> ListingView<'a> {
                 .text(html)
                 .parse_mode(ParseMode::Html)
                 .link_preview_options(LinkPreviewOptions::builder().is_disabled(true).build())
+                .maybe_reply_parameters(reply_parameters)
                 .build()
                 .into(),
 
@@ -59,6 +67,7 @@ impl<'a> ListingView<'a> {
                 .photo(image_urls[0])
                 .caption(html)
                 .parse_mode(ParseMode::Html)
+                .maybe_reply_parameters(reply_parameters)
                 .build()
                 .into(),
 
@@ -78,6 +87,7 @@ impl<'a> ListingView<'a> {
                 SendMediaGroup::builder()
                     .chat_id(chat_id)
                     .media(media)
+                    .maybe_reply_parameters(reply_parameters)
                     .build()
                     .into()
             }

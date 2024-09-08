@@ -1,3 +1,5 @@
+#![expect(dead_code)]
+
 use bon::builder;
 use serde::{Deserialize, Serialize};
 
@@ -45,7 +47,6 @@ pub enum UpdatePayload {
 pub enum ChatId {
     Integer(i64),
 
-    #[expect(dead_code)]
     Username(String),
 }
 
@@ -109,7 +110,7 @@ pub enum ParseMode {
 /// Describes the [options][1] used for link preview generation.
 ///
 /// [1]: https://core.telegram.org/bots/api#linkpreviewoptions
-#[derive(Default, Serialize)]
+#[derive(Serialize)]
 #[must_use]
 #[builder]
 pub struct LinkPreviewOptions {
@@ -132,7 +133,7 @@ pub struct LinkPreviewOptions {
 /// Describes [reply parameters][1] for the message that is being sent.
 ///
 /// [1]: https://core.telegram.org/bots/api#replyparameters
-#[derive(Default, Serialize)]
+#[derive(Serialize)]
 #[must_use]
 #[builder]
 pub struct ReplyParameters {
@@ -143,4 +144,53 @@ pub struct ReplyParameters {
     /// Pass `true` if the message should be sent even if the specified message to be replied to is not found.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_sending_without_reply: Option<bool>,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+#[must_use]
+pub enum ReplyMarkup<'a> {
+    InlineKeyboardMarkup(InlineKeyboardMarkup<'a>),
+}
+
+/// This object represents an [inline keyboard][1] that appears right next to the message it belongs to.
+///
+/// [1]: https://core.telegram.org/bots/api#inlinekeyboardmarkup
+#[derive(Serialize)]
+#[must_use]
+pub struct InlineKeyboardMarkup<'a> {
+    pub inline_keyboard: Vec<Vec<InlineKeyboardButton<'a>>>,
+}
+
+impl<'a> From<InlineKeyboardButton<'a>> for InlineKeyboardMarkup<'a> {
+    fn from(button: InlineKeyboardButton<'a>) -> Self {
+        Self {
+            inline_keyboard: vec![vec![button]],
+        }
+    }
+}
+
+/// This object represents one [button of an inline keyboard][1].
+///
+/// [1]: https://core.telegram.org/bots/api#inlinekeyboardbutton
+#[derive(Serialize)]
+#[must_use]
+pub struct InlineKeyboardButton<'a> {
+    pub text: &'a str,
+
+    #[serde(flatten)]
+    pub action: InlineKeyboardButtonAction,
+}
+
+#[derive(Serialize)]
+#[must_use]
+pub enum InlineKeyboardButtonAction {
+    #[serde(rename = "url")]
+    Url(String),
+
+    /// Data to be sent in a [callback query][1] to the bot when the button is pressed, 1-64 bytes.
+    ///
+    /// [1]: https://core.telegram.org/bots/api#callbackquery
+    #[serde(rename = "callback_data")]
+    CallbackData(String),
 }
