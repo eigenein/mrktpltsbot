@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 
 use chrono_humanize::HumanTime;
-use maud::{html, Markup, PreEscaped, Render};
+use maud::{Markup, Render, html};
 use url::Url;
 
 use crate::marktplaats::listing::{

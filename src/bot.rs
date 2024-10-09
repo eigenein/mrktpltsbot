@@ -8,10 +8,10 @@ use crate::{
     marktplaats::{Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
+        Telegram,
         listing::ListingView,
         methods::{AllowedUpdate, GetUpdates, Method, SendMessage},
         objects::{ReplyParameters, Update, UpdatePayload},
-        Telegram,
     },
 };
 
@@ -87,7 +87,7 @@ impl Bot {
                 .call_on(&self.telegram)
                 .await?;
         } else {
-            self.handle_search(&text.to_lowercase(), chat.id, reply_parameters)
+            self.handle_search(&text.trim().to_lowercase(), chat.id, reply_parameters)
                 .await?;
         }
 

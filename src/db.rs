@@ -2,9 +2,9 @@ use std::path::Path;
 
 use anyhow::Context;
 use sqlx::{
+    SqlitePool,
     migrate::Migrator,
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
-    SqlitePool,
 };
 
 use crate::prelude::*;
@@ -52,7 +52,6 @@ impl Db {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     #[tokio::test]
@@ -61,7 +60,8 @@ mod tests {
             .await?
             .insert_search_query("test")
             .await?;
-        assert_eq!(hash, 6214865450970028004);
+
+        assert_eq!(hash, 6_214_865_450_970_028_004);
 
         // Second insert to verify conflicts:
         Db::new(Path::new(":memory:"))
