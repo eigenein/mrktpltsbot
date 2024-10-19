@@ -1,6 +1,6 @@
 #![expect(dead_code)]
 
-use bon::builder;
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 
 /// This object represents a Telegram user or bot.
@@ -110,9 +110,8 @@ pub enum ParseMode {
 /// Describes the [options][1] used for link preview generation.
 ///
 /// [1]: https://core.telegram.org/bots/api#linkpreviewoptions
-#[derive(Serialize)]
+#[derive(Builder, Serialize)]
 #[must_use]
-#[builder]
 pub struct LinkPreviewOptions {
     /// `true`, if the link preview is disabled
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -133,9 +132,8 @@ pub struct LinkPreviewOptions {
 /// Describes [reply parameters][1] for the message that is being sent.
 ///
 /// [1]: https://core.telegram.org/bots/api#replyparameters
-#[derive(Serialize)]
+#[derive(Builder, Serialize)]
 #[must_use]
-#[builder]
 pub struct ReplyParameters {
     /// Identifier of the message that will be replied to in the current chat,
     /// or in the chat `chat_id` if it is specified

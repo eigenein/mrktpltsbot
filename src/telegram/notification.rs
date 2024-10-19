@@ -7,38 +7,38 @@ use crate::{
     marktplaats::listing::Listing,
     prelude::*,
     telegram::{
+        Telegram,
         methods::{InputMediaPhoto, Media, SendMediaGroup, SendMessage, SendPhoto},
         objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters},
-        Telegram,
     },
 };
 
-pub enum ListingView<'a> {
+pub enum Notification<'a> {
     Message(SendMessage<'a>),
     Photo(SendPhoto<'a>),
     MediaGroup(SendMediaGroup<'a>),
 }
 
-impl<'a> From<SendMessage<'a>> for ListingView<'a> {
+impl<'a> From<SendMessage<'a>> for Notification<'a> {
     fn from(send_message: SendMessage<'a>) -> Self {
         Self::Message(send_message)
     }
 }
 
-impl<'a> From<SendPhoto<'a>> for ListingView<'a> {
+impl<'a> From<SendPhoto<'a>> for Notification<'a> {
     fn from(send_photo: SendPhoto<'a>) -> Self {
         Self::Photo(send_photo)
     }
 }
 
-impl<'a> From<SendMediaGroup<'a>> for ListingView<'a> {
+impl<'a> From<SendMediaGroup<'a>> for Notification<'a> {
     fn from(send_media_group: SendMediaGroup<'a>) -> Self {
         Self::MediaGroup(send_media_group)
     }
 }
 
 #[bon]
-impl<'a> ListingView<'a> {
+impl<'a> Notification<'a> {
     #[builder]
     pub fn new(
         listing: &'a Listing,
@@ -94,7 +94,7 @@ impl<'a> ListingView<'a> {
         }
     }
 
-    pub async fn call_on(&self, telegram: &Telegram) -> Result {
+    pub async fn send_with(&self, telegram: &Telegram) -> Result {
         match self {
             Self::Message(request) => {
                 let message = telegram.call(request).await?;
