@@ -8,10 +8,10 @@ use crate::{
     marktplaats::{Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
-        listing::ListingView,
-        methods::{GetMe, GetUpdates, Method, SendMessage},
-        objects::{ChatId, ParseMode},
         Telegram,
+        methods::{GetMe, GetUpdates, Method, SendMessage},
+        notification::Notification,
+        objects::{ChatId, ParseMode},
     },
 };
 
@@ -70,11 +70,11 @@ async fn fallible_main(cli: Cli) -> Result {
             for listing in listings {
                 info!(listing.item_id, listing.title, "Found advertisement");
                 if let Some(chat_id) = chat_id {
-                    ListingView::builder()
+                    Notification::builder()
                         .chat_id(chat_id)
                         .listing(&listing)
                         .build()
-                        .call_on(&telegram)
+                        .send_with(&telegram)
                         .await?;
                 }
             }

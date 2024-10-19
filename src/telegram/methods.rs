@@ -1,13 +1,13 @@
 use std::{borrow::Cow, fmt::Debug, time::Duration};
 
-use bon::builder;
-use serde::{de::DeserializeOwned, Serialize};
+use bon::{Builder, builder};
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
     client::DEFAULT_TIMEOUT,
     prelude::*,
     serde::as_inner_json,
-    telegram::{error::TelegramError, objects::*, Telegram},
+    telegram::{Telegram, error::TelegramError, objects::*},
 };
 
 /// Telegram bot API method.
@@ -50,9 +50,8 @@ pub enum AllowedUpdate {
 }
 
 /// Use this method to receive incoming updates using long polling. Returns an `Array` of `Update` objects.
-#[derive(Serialize)]
+#[derive(Builder, Serialize)]
 #[must_use]
-#[builder]
 pub struct GetUpdates<'a> {
     /// Identifier of the first update to be returned.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -86,9 +85,8 @@ impl<'a> Method for GetUpdates<'a> {
 /// [Send a message][1].
 ///
 /// [1]: https://core.telegram.org/bots/api#sendmessage
-#[derive(Serialize)]
+#[derive(Builder, Serialize)]
 #[must_use]
-#[builder]
 pub struct SendMessage<'a> {
     #[builder(into)]
     pub chat_id: ChatId,
@@ -114,9 +112,8 @@ impl Method for SendMessage<'_> {
 /// [Send a photo][1].
 ///
 /// [1]: https://core.telegram.org/bots/api#sendphoto
-#[derive(Serialize)]
+#[derive(Builder, Serialize)]
 #[must_use]
-#[builder]
 pub struct SendPhoto<'a> {
     pub chat_id: ChatId,
 
@@ -145,9 +142,8 @@ impl Method for SendPhoto<'_> {
 /// Use this method to [send a group][1] of photos, videos, documents or audios as an album.
 ///
 /// [1]: https://core.telegram.org/bots/api#sendmediagroup
-#[derive(Serialize)]
+#[derive(Builder, Serialize)]
 #[must_use]
-#[builder]
 pub struct SendMediaGroup<'a> {
     pub chat_id: ChatId,
 
@@ -172,9 +168,8 @@ pub enum Media<'a> {
     InputMediaPhoto(InputMediaPhoto<'a>),
 }
 
-#[derive(Serialize)]
+#[derive(Builder, Serialize)]
 #[must_use]
-#[builder]
 pub struct InputMediaPhoto<'a> {
     #[builder(into)]
     pub media: Cow<'a, str>,

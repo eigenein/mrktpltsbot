@@ -1,6 +1,6 @@
 pub mod listing;
 
-use bon::builder;
+use bon::Builder;
 use reqwest::Url;
 use serde::Serialize;
 
@@ -38,8 +38,7 @@ impl Marktplaats {
 }
 
 #[must_use]
-#[builder]
-#[derive(Serialize)]
+#[derive(Builder, Serialize)]
 pub struct SearchRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub query: Option<&'a str>,

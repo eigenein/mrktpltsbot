@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use backoff::ExponentialBackoff;
-use bon::builder;
+use bon::Builder;
 
 use crate::{
     db::Db,
@@ -9,13 +9,13 @@ use crate::{
     prelude::*,
     telegram::{
         Telegram,
-        listing::ListingView,
         methods::{AllowedUpdate, GetUpdates, Method, SendMessage},
+        notification::Notification,
         objects::{ReplyParameters, Update, UpdatePayload},
     },
 };
 
-#[builder]
+#[derive(Builder)]
 pub struct Bot {
     telegram: Telegram,
     db: Db,
@@ -110,12 +110,12 @@ impl Bot {
             .build();
         let mut listings = self.marktplaats.search(&request).await?;
         if let Some(listing) = listings.inner.pop() {
-            ListingView::builder()
+            Notification::builder()
                 .chat_id(chat_id)
                 .listing(&listing)
                 .reply_parameters(reply_parameters)
                 .build()
-                .call_on(&self.telegram)
+                .send_with(&self.telegram)
                 .await?;
         } else {
             let _ = SendMessage::builder()
