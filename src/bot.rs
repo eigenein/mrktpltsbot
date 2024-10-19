@@ -92,25 +92,19 @@ impl Bot {
             .build();
 
         if text.starts_with('/') {
-            let _ = SendMessage::builder()
-                .chat_id(chat.id)
-                .text("I can't answer commands just yet")
-                .reply_parameters(reply_parameters)
-                .build()
-                .call_on(&self.telegram)
-                .await?;
+            self.handle_command(text, chat.id, reply_parameters).await?;
         } else {
-            self.handle_quick_search(me, &text.trim().to_lowercase(), chat.id, reply_parameters)
+            self.handle_search(me, text, chat.id, reply_parameters)
                 .await?;
         }
 
         Ok(())
     }
 
-    /// Handle the quick search request from Telegram.
+    /// Handle the search request from Telegram.
     ///
-    /// A quick search is just a message that is not a command.
-    async fn handle_quick_search(
+    /// A search request is just a message that is not a command.
+    async fn handle_search(
         &self,
         me: &str,
         query: &str,
@@ -118,9 +112,9 @@ impl Bot {
         reply_parameters: ReplyParameters,
     ) -> Result {
         let query = SearchQuery::from(query);
-        self.db.insert_search_query(query).await?;
+        self.db.insert_search_query(&query).await?;
         let request = SearchRequest::builder()
-            .query(query.text)
+            .query(&query.text)
             .limit(1)
             .sort_by(SortBy::SortIndex)
             .sort_order(SortOrder::Decreasing)
@@ -157,6 +151,15 @@ impl Bot {
                 .call_on(&self.telegram)
                 .await?;
         }
+        Ok(())
+    }
+
+    async fn handle_command(
+        &self,
+        text: &str,
+        chat_id: i64,
+        reply_parameters: ReplyParameters,
+    ) -> Result {
         Ok(())
     }
 }

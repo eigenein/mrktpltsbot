@@ -34,7 +34,7 @@ impl<R: Render> TryRender for R {
 
 #[derive(Builder)]
 pub struct ListingCaption<'a> {
-    search_query: SearchQuery<'a>,
+    search_query: SearchQuery,
     listing: &'a Listing,
     commands: &'a [StartCommand<'a>],
 }

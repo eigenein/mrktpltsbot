@@ -1,7 +1,6 @@
 /// User's search query.
-#[derive(Copy, Clone)]
-pub struct SearchQuery<'a> {
-    pub text: &'a str,
+pub struct SearchQuery {
+    pub text: String,
 
     /// SeaHash-ed text.
     ///
@@ -9,13 +8,14 @@ pub struct SearchQuery<'a> {
     pub hash: i64,
 }
 
-impl<'a> From<&'a str> for SearchQuery<'a> {
-    fn from(text: &'a str) -> Self {
+impl From<&str> for SearchQuery {
+    fn from(text: &str) -> Self {
+        let text = text.trim().to_lowercase();
         Self {
-            text,
-
             #[expect(clippy::cast_possible_wrap)]
             hash: seahash::hash(text.as_bytes()) as i64,
+
+            text,
         }
     }
 }
