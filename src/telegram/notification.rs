@@ -13,8 +13,13 @@ use crate::{
 };
 
 pub enum Notification<'a> {
+    /// Plain-text notification.
     Message(SendMessage<'a>),
+
+    /// Single-photo notification.
     Photo(SendPhoto<'a>),
+
+    /// Multiple-photo notification.
     MediaGroup(SendMediaGroup<'a>),
 }
 

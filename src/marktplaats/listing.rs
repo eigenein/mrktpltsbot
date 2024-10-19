@@ -35,11 +35,6 @@ pub struct Listing {
     #[serde(default, rename = "pictures")]
     pub pictures: Vec<Picture>,
 
-    /// Low-quality image URLs **without schema**.
-    #[serde(default, rename = "imageUrls")]
-    #[expect(dead_code)]
-    pub image_urls: Vec<String>,
-
     #[serde(rename = "priceInfo")]
     pub price: Price,
 
