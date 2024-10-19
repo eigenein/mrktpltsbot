@@ -15,6 +15,8 @@ use crate::{
         methods::{AllowedUpdate, GetMe, GetUpdates, Method, SendMessage},
         notification::Notification,
         objects::{ReplyParameters, Update, UpdatePayload},
+        render::{ListingCaption, TryRender},
+        start::StartCommand,
     },
 };
 
@@ -126,12 +128,23 @@ impl Bot {
             .build();
         let mut listings = self.marktplaats.search(&request).await?;
         if let Some(listing) = listings.inner.pop() {
+            let subscribe_command = StartCommand::builder()
+                .me(me)
+                .text("Subscribe")
+                .payload(query.subscribe())
+                .build();
+            let caption = ListingCaption::builder()
+                .listing(&listing)
+                .search_query(query)
+                .commands(&[subscribe_command])
+                .build()
+                .try_render()?
+                .into_string();
             Notification::builder()
                 .chat_id(chat_id.into())
-                .listing(&listing)
+                .caption(&caption)
+                .pictures(&listing.pictures)
                 .reply_parameters(reply_parameters)
-                .query(query)
-                .me(me)
                 .build()
                 .send_with(&self.telegram)
                 .await?;
