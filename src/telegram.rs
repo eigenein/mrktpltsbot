@@ -4,6 +4,7 @@ pub mod notification;
 pub mod objects;
 pub mod render;
 pub mod result;
+mod start;
 
 use std::{fmt::Debug, time::Duration};
 
