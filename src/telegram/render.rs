@@ -5,37 +5,7 @@ use std::borrow::Cow;
 use maud::{Markup, Render, html};
 use url::Url;
 
-use crate::marktplaats::listing::{
-    Attribute,
-    Condition,
-    Delivery,
-    Euro,
-    Listing,
-    Location,
-    Price,
-    Seller,
-};
-
-impl Render for Listing {
-    fn render(&self) -> Markup {
-        html! {
-            strong { a href=(self.https_url()) { (self.title) } }
-            "\n\n"
-            (self.price)
-            @for attribute in &self.attributes {
-                (attribute)
-            }
-            "\n\n"
-            blockquote expandable { (self.description()) }
-            "\n\n"
-            (self.seller)
-            @if self.location.city_name.is_some() {
-                strong { " • " }
-                (self.location)
-            }
-        }
-    }
-}
+use crate::marktplaats::listing::{Attribute, Condition, Delivery, Euro, Location, Price, Seller};
 
 impl Render for Price {
     fn render(&self) -> Markup {
