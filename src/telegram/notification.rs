@@ -1,15 +1,18 @@
-use std::{collections::VecDeque, iter::once};
+use std::{collections::VecDeque, convert::TryFrom, iter::once};
 
 use bon::bon;
 use maud::{Render, html};
+use url::Url;
 
 use crate::{
+    bot::query::SearchQuery,
     marktplaats::listing::Listing,
     prelude::*,
     telegram::{
         Telegram,
         methods::{InputMediaPhoto, Media, SendMediaGroup, SendMessage, SendPhoto},
         objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters},
+        start::{StartCommand, StartPayload},
     },
 };
 
@@ -41,13 +44,25 @@ impl<'a> From<SendMediaGroup<'a>> for Notification<'a> {
 impl<'a> Notification<'a> {
     #[builder]
     pub fn new(
+        me: &'a str,
+        query: SearchQuery<'a>,
         listing: &'a Listing,
-        #[builder(into)] chat_id: ChatId,
+        chat_id: ChatId,
         reply_parameters: Option<ReplyParameters>,
-    ) -> Self {
-        let html = {
+    ) -> Result<Self> {
+        let command = StartCommand {
+            username: me,
+            payload: StartPayload::Subscribe {
+                query_hash: query.hash,
+            },
+        };
+        let caption = {
             let markup = html! {
                 strong { a href=(listing.https_url()) { (listing.title) } }
+                "\n"
+                em { (query.text) }
+                strong { " • " }
+                a href=(Url::try_from(&command)?) { "Subscribe" }
                 "\n\n"
                 (listing.price)
                 @for attribute in &listing.attributes {
@@ -71,10 +86,11 @@ impl<'a> Notification<'a> {
             .filter_map(|picture| picture.any_url())
             .collect();
 
-        match image_urls.len() {
+        // Specific representation depends on how many pictures there are.
+        let this = match image_urls.len() {
             0 => SendMessage::builder()
                 .chat_id(chat_id)
-                .text(html)
+                .text(caption)
                 .parse_mode(ParseMode::Html)
                 .link_preview_options(LinkPreviewOptions::builder().is_disabled(true).build())
                 .maybe_reply_parameters(reply_parameters)
@@ -84,7 +100,7 @@ impl<'a> Notification<'a> {
             1 => SendPhoto::builder()
                 .chat_id(chat_id)
                 .photo(image_urls[0])
-                .caption(html)
+                .caption(caption)
                 .parse_mode(ParseMode::Html)
                 .maybe_reply_parameters(reply_parameters)
                 .build()
@@ -94,7 +110,7 @@ impl<'a> Notification<'a> {
                 let first_media = Media::InputMediaPhoto(
                     InputMediaPhoto::builder()
                         .media(image_urls.pop_front().unwrap())
-                        .caption(html)
+                        .caption(caption)
                         .parse_mode(ParseMode::Html)
                         .build(),
                 );
@@ -110,7 +126,8 @@ impl<'a> Notification<'a> {
                     .build()
                     .into()
             }
-        }
+        };
+        Ok(this)
     }
 
     pub async fn send_with(&self, telegram: &Telegram) -> Result {
