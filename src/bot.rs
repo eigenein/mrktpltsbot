@@ -132,7 +132,7 @@ impl Bot {
                 .reply_parameters(reply_parameters)
                 .query(query)
                 .me(me)
-                .build()?
+                .build()
                 .send_with(&self.telegram)
                 .await?;
         } else {
