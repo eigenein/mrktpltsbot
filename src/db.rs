@@ -32,7 +32,7 @@ impl Db {
         Ok(Self(pool))
     }
 
-    pub async fn insert_search_query<'a>(&self, query: SearchQuery<'a>) -> Result {
+    pub async fn insert_search_query<'a>(&self, query: &SearchQuery) -> Result {
         sqlx::query!(
             // language=sqlite
             "INSERT INTO search_queries (hash, text) VALUES (?1, ?2) ON CONFLICT DO UPDATE SET text = ?2",
@@ -56,10 +56,10 @@ mod tests {
 
         let db = Db::new(Path::new(":memory:")).await?;
 
-        db.insert_search_query(query).await?;
+        db.insert_search_query(&query).await?;
 
         // Second insert to verify conflicts:
-        db.insert_search_query(query).await?;
+        db.insert_search_query(&query).await?;
 
         Ok(())
     }

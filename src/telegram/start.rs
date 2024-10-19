@@ -32,7 +32,7 @@ pub struct StartCommand<'a> {
     pub payload: StartPayload,
 }
 
-impl<'a> SearchQuery<'a> {
+impl SearchQuery {
     pub const fn subscribe(&self) -> StartPayload {
         StartPayload::Subscribe {
             query_hash: self.hash,
