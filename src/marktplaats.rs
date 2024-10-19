@@ -21,14 +21,18 @@ impl Marktplaats {
             serde_qs::to_string(request).context("failed to serialize the search request")?;
         let mut url = Url::parse("https://www.marktplaats.nl/lrp/api/search")?;
         url.set_query(Some(&query));
-        self.0
+        let response = self
+            .0
             .get(url)
             .send()
             .await
-            .with_context(|| format!("failed to search `{query}`"))?
+            .with_context(|| format!("failed to request a search for `{query}`"))?
             .error_for_status()?
-            .json()
+            .text()
             .await
+            .with_context(|| format!("failed to receive the search response for `{query}`"))?;
+        debug!(response, "received response");
+        serde_json::from_str(&response)
             .with_context(|| format!("failed to parse search response for `{query}`"))
     }
 }

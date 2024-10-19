@@ -39,8 +39,6 @@ module_name_repetitions = "allow"
 anyhow = { version = "1.0.79", features = ["backtrace"] }
 backoff = { version = "0.4.0", features = ["futures", "tokio"] }
 bon = "2.1.1"
-chrono = { version = "0.4.38", features = ["serde"] }
-chrono-humanize = "0.2.3"
 clap = { version = "4.4.16", features = ["cargo", "derive", "env"] }
 dotenvy = "0.15.7"
 maud = "0.26.0"

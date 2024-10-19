@@ -2,7 +2,6 @@
 
 use std::borrow::Cow;
 
-use chrono_humanize::HumanTime;
 use maud::{Markup, Render, html};
 use url::Url;
 
@@ -30,10 +29,10 @@ impl Render for Listing {
             blockquote expandable { (self.description()) }
             "\n\n"
             (self.seller)
-            strong { " • " }
-            (self.location)
-            strong { " • " }
-            (HumanTime::from(self.timestamp))
+            @if self.location.city_name.is_some() {
+                strong { " • " }
+                (self.location)
+            }
         }
     }
 }
@@ -66,14 +65,17 @@ impl Render for Euro {
 
 impl Render for Location {
     fn render(&self) -> Markup {
-        let mut query = vec![("q", Cow::Borrowed(self.city_name.as_ref()))];
+        let Some(city_name) = self.city_name.as_deref() else {
+            return Markup::default();
+        };
+        let mut query = vec![("q", Cow::Borrowed(city_name))];
         if let (Some(latitude), Some(longitude)) = (self.latitude, self.longitude) {
             query.push(("ll", Cow::Owned(format!("{latitude},{longitude}"))));
         }
         html! {
             @match Url::parse_with_params("https://maps.apple.com/maps", &query) {
-                Ok(url) => { a href=(url) { (self.city_name) } },
-                Err(_) => (self.city_name)
+                Ok(url) => { a href=(url) { (city_name) } },
+                Err(_) => (city_name)
             }
         }
     }
