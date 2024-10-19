@@ -1,8 +1,7 @@
-use std::{collections::VecDeque, convert::TryFrom, iter::once};
+use std::{collections::VecDeque, iter::once};
 
 use bon::bon;
 use maud::{Render, html};
-use url::Url;
 
 use crate::{
     bot::query::SearchQuery,
@@ -12,7 +11,7 @@ use crate::{
         Telegram,
         methods::{InputMediaPhoto, Media, SendMediaGroup, SendMessage, SendPhoto},
         objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters},
-        start::{StartCommand, StartPayload},
+        render::ListingCaption,
     },
 };
 
@@ -49,36 +48,15 @@ impl<'a> Notification<'a> {
         listing: &'a Listing,
         chat_id: ChatId,
         reply_parameters: Option<ReplyParameters>,
-    ) -> Result<Self> {
-        let command = StartCommand {
-            username: me,
-            payload: StartPayload::Subscribe {
-                query_hash: query.hash,
-            },
-        };
-        let caption = {
-            let markup = html! {
-                strong { a href=(listing.https_url()) { (listing.title) } }
-                "\n"
-                em { (query.text) }
-                strong { " • " }
-                a href=(Url::try_from(&command)?) { "Subscribe" }
-                "\n\n"
-                (listing.price)
-                @for attribute in &listing.attributes {
-                    (attribute)
-                }
-                "\n\n"
-                blockquote expandable { (listing.description()) }
-                "\n\n"
-                (listing.seller)
-                @if listing.location.city_name.is_some() {
-                    strong { " • " }
-                    (listing.location)
-                }
-            };
-            markup.render().into_string()
-        };
+    ) -> Self {
+        let caption = ListingCaption::builder()
+            .me(me)
+            .listing(listing)
+            .search_query(query)
+            .commands(&[])
+            .build()
+            .render()
+            .into_string();
 
         let mut image_urls: VecDeque<&str> = listing
             .pictures
@@ -87,7 +65,7 @@ impl<'a> Notification<'a> {
             .collect();
 
         // Specific representation depends on how many pictures there are.
-        let this = match image_urls.len() {
+        match image_urls.len() {
             0 => SendMessage::builder()
                 .chat_id(chat_id)
                 .text(caption)
@@ -126,8 +104,7 @@ impl<'a> Notification<'a> {
                     .build()
                     .into()
             }
-        };
-        Ok(this)
+        }
     }
 
     pub async fn send_with(&self, telegram: &Telegram) -> Result {

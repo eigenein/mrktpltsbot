@@ -2,10 +2,72 @@
 
 use std::borrow::Cow;
 
+use bon::Builder;
 use maud::{Markup, Render, html};
 use url::Url;
 
-use crate::marktplaats::listing::{Attribute, Condition, Delivery, Euro, Location, Price, Seller};
+use crate::{
+    bot::query::SearchQuery,
+    marktplaats::listing::{
+        Attribute,
+        Condition,
+        Delivery,
+        Euro,
+        Listing,
+        Location,
+        Price,
+        Seller,
+    },
+    telegram::start::StartCommand,
+};
+
+#[derive(Builder)]
+pub struct ListingCaption<'a> {
+    me: &'a str,
+    search_query: SearchQuery<'a>,
+    listing: &'a Listing,
+    commands: &'a [StartCommand<'a>],
+}
+
+impl<'a> Render for ListingCaption<'a> {
+    fn render(&self) -> Markup {
+        html! {
+            strong { a href=(self.listing.https_url()) { (self.listing.title) } }
+            "\n"
+            em { (self.search_query.text) }
+            @for command in self.commands {
+                strong { " • " }
+                (command)
+            }
+            "\n\n"
+            (self.listing.price)
+            @for attribute in &self.listing.attributes {
+                (attribute)
+            }
+            "\n\n"
+            blockquote expandable { (self.listing.description()) }
+            "\n\n"
+            (self.listing.seller)
+            @if self.listing.location.city_name.is_some() {
+                strong { " • " }
+                (self.listing.location)
+            }
+        }
+    }
+}
+
+impl<'a> Render for StartCommand<'a> {
+    fn render(&self) -> Markup {
+        let mut url = Url::parse("https://t.me").unwrap();
+        url.set_path(self.me);
+        let payload = rmp_serde::to_vec_named(&self.payload)
+            .expect("`/start` payload should be serializable");
+        url.set_query(Some(&format!("start={}", base64_url::encode(&payload))));
+        html! {
+            a href=(url) { (self.text) }
+        }
+    }
+}
 
 impl Render for Price {
     fn render(&self) -> Markup {
@@ -96,5 +158,21 @@ impl Render for Delivery {
                 Self::CollectionOrShipping => { (Self::CollectionOnly) strong { " • " } (Self::ShippingOnly) }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::telegram::start::StartPayload;
+
+    #[test]
+    fn test_render_start_command_ok() {
+        let command = StartCommand::builder()
+            .me("mrktpltsbot")
+            .payload(&StartPayload::Subscribe { query_hash: 1 })
+            .text("Subscribe")
+            .build();
+        assert_eq!(command.render().into_string(), "<a>Subscribe</a>");
     }
 }
