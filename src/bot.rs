@@ -53,7 +53,6 @@ impl Bot {
             .await?;
 
         for update in updates {
-            info!(update.id, "Received update");
             self.offset.store(update.id + 1, Ordering::Relaxed);
             self.on_update(update).await?;
         }

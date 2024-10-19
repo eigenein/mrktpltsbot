@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, iter::once};
 
 use bon::bon;
-use maud::Render;
+use maud::{Render, html};
 
 use crate::{
     marktplaats::listing::Listing,
@@ -45,7 +45,26 @@ impl<'a> Notification<'a> {
         #[builder(into)] chat_id: ChatId,
         reply_parameters: Option<ReplyParameters>,
     ) -> Self {
-        let html = listing.render().into_string();
+        let html = {
+            let markup = html! {
+                strong { a href=(listing.https_url()) { (listing.title) } }
+                "\n\n"
+                (listing.price)
+                @for attribute in &listing.attributes {
+                    (attribute)
+                }
+                "\n\n"
+                blockquote expandable { (listing.description()) }
+                "\n\n"
+                (listing.seller)
+                @if listing.location.city_name.is_some() {
+                    strong { " • " }
+                    (listing.location)
+                }
+            };
+            markup.render().into_string()
+        };
+
         let mut image_urls: VecDeque<&str> = listing
             .pictures
             .iter()
