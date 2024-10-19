@@ -1,17 +1,14 @@
 use std::{collections::VecDeque, iter::once};
 
 use bon::bon;
-use maud::{Render, html};
 
 use crate::{
-    bot::query::SearchQuery,
-    marktplaats::listing::Listing,
+    marktplaats::listing::Picture,
     prelude::*,
     telegram::{
         Telegram,
         methods::{InputMediaPhoto, Media, SendMediaGroup, SendMessage, SendPhoto},
         objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters},
-        render::ListingCaption,
     },
 };
 
@@ -43,23 +40,12 @@ impl<'a> From<SendMediaGroup<'a>> for Notification<'a> {
 impl<'a> Notification<'a> {
     #[builder]
     pub fn new(
-        me: &'a str,
-        query: SearchQuery<'a>,
-        listing: &'a Listing,
+        caption: &'a str,
+        pictures: &'a [Picture],
         chat_id: ChatId,
         reply_parameters: Option<ReplyParameters>,
     ) -> Self {
-        let caption = ListingCaption::builder()
-            .me(me)
-            .listing(listing)
-            .search_query(query)
-            .commands(&[])
-            .build()
-            .render()
-            .into_string();
-
-        let mut image_urls: VecDeque<&str> = listing
-            .pictures
+        let mut image_urls: VecDeque<&str> = pictures
             .iter()
             .filter_map(|picture| picture.any_url())
             .collect();

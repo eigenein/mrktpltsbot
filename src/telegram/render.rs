@@ -18,26 +18,36 @@ use crate::{
         Price,
         Seller,
     },
+    prelude::*,
     telegram::start::StartCommand,
 };
 
+pub trait TryRender {
+    fn try_render(&self) -> Result<Markup>;
+}
+
+impl<R: Render> TryRender for R {
+    fn try_render(&self) -> Result<Markup> {
+        Ok(self.render())
+    }
+}
+
 #[derive(Builder)]
 pub struct ListingCaption<'a> {
-    me: &'a str,
     search_query: SearchQuery<'a>,
     listing: &'a Listing,
     commands: &'a [StartCommand<'a>],
 }
 
-impl<'a> Render for ListingCaption<'a> {
-    fn render(&self) -> Markup {
-        html! {
+impl<'a> TryRender for ListingCaption<'a> {
+    fn try_render(&self) -> Result<Markup> {
+        Ok(html! {
             strong { a href=(self.listing.https_url()) { (self.listing.title) } }
             "\n"
             em { (self.search_query.text) }
             @for command in self.commands {
                 strong { " • " }
-                (command)
+                (command.try_render()?)
             }
             "\n\n"
             (self.listing.price)
@@ -52,20 +62,18 @@ impl<'a> Render for ListingCaption<'a> {
                 strong { " • " }
                 (self.listing.location)
             }
-        }
+        })
     }
 }
 
-impl<'a> Render for StartCommand<'a> {
-    fn render(&self) -> Markup {
-        let mut url = Url::parse("https://t.me").unwrap();
+impl<'a> TryRender for StartCommand<'a> {
+    fn try_render(&self) -> Result<Markup> {
+        let mut url = Url::parse("https://t.me")?;
         url.set_path(self.me);
         let payload = rmp_serde::to_vec_named(&self.payload)
-            .expect("`/start` payload should be serializable");
+            .context("failed to serialize the `/start` payload")?;
         url.set_query(Some(&format!("start={}", base64_url::encode(&payload))));
-        html! {
-            a href=(url) { (self.text) }
-        }
+        Ok(html! { a href=(url) { (self.text) } })
     }
 }
 
@@ -167,12 +175,16 @@ mod tests {
     use crate::telegram::start::StartPayload;
 
     #[test]
-    fn test_render_start_command_ok() {
+    fn test_render_start_command_ok() -> Result {
         let command = StartCommand::builder()
             .me("mrktpltsbot")
-            .payload(&StartPayload::Subscribe { query_hash: 1 })
+            .payload(StartPayload::Subscribe { query_hash: 1 })
             .text("Subscribe")
             .build();
-        assert_eq!(command.render().into_string(), "<a>Subscribe</a>");
+        assert_eq!(
+            command.try_render()?.into_string(),
+            r#"<a href="https://t.me/mrktpltsbot?start=gqF0o3N1YqFoAQ">Subscribe</a>"#,
+        );
+        Ok(())
     }
 }
