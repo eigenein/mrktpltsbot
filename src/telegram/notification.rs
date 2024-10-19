@@ -114,22 +114,14 @@ impl<'a> Notification<'a> {
     }
 
     pub async fn send_with(&self, telegram: &Telegram) -> Result {
-        match self {
-            Self::Message(request) => {
-                let message = telegram.call(request).await?;
-                debug!(message.id, "Sent");
-            }
-            Self::Photo(request) => {
-                let message = telegram.call(request).await?;
-                debug!(message.id, "Sent");
-            }
-            Self::MediaGroup(request) => {
-                let messages = telegram.call(request).await?;
-                for message in messages {
-                    debug!(message.id, "Sent");
-                }
-            }
+        let messages = match self {
+            Self::Message(request) => vec![telegram.call(request).await?],
+            Self::Photo(request) => vec![telegram.call(request).await?],
+            Self::MediaGroup(request) => telegram.call(request).await?,
         };
+        for message in messages {
+            debug!(message.id, "Sent");
+        }
         Ok(())
     }
 }
