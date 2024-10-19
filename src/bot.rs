@@ -1,15 +1,18 @@
+pub mod query;
+
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use backoff::ExponentialBackoff;
 use bon::Builder;
 
 use crate::{
+    bot::query::SearchQuery,
     db::Db,
     marktplaats::{Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
         Telegram,
-        methods::{AllowedUpdate, GetUpdates, Method, SendMessage},
+        methods::{AllowedUpdate, GetMe, GetUpdates, Method, SendMessage},
         notification::Notification,
         objects::{ReplyParameters, Update, UpdatePayload},
     },
@@ -20,7 +23,7 @@ pub struct Bot {
     telegram: Telegram,
     db: Db,
     marktplaats: Marktplaats,
-    timeout_secs: u64,
+    poll_timeout_secs: u64,
 
     #[builder(default = AtomicU64::new(0))]
     offset: AtomicU64,
@@ -28,11 +31,19 @@ pub struct Bot {
 
 impl Bot {
     pub async fn run_telegram(&self) -> Result {
-        info!("Running Telegram bot…");
+        let me = self
+            .telegram
+            .call(&GetMe)
+            .await
+            .context("failed to get bot’s user")?
+            .username
+            .context("the bot has no username")?;
+
+        info!(me, "Running Telegram bot…");
         loop {
             backoff::future::retry_notify(
                 ExponentialBackoff::default(),
-                || async { Ok(self.handle_telegram_updates().await?) },
+                || async { Ok(self.handle_telegram_updates(&me).await?) },
                 |error, _| {
                     warn!("Bot iteration failed: {error:#}");
                 },
@@ -43,31 +54,34 @@ impl Bot {
     }
 
     #[instrument(skip_all)]
-    async fn handle_telegram_updates(&self) -> Result {
+    async fn handle_telegram_updates(&self, me: &str) -> Result {
         let updates = GetUpdates::builder()
             .offset(self.offset.load(Ordering::Relaxed))
-            .timeout_secs(self.timeout_secs)
+            .timeout_secs(self.poll_timeout_secs)
             .allowed_updates(&[AllowedUpdate::Message])
             .build()
             .call_on(&self.telegram)
             .await?;
+        info!(n_updates = updates.len(), "Received");
 
         for update in updates {
             self.offset.store(update.id + 1, Ordering::Relaxed);
-            self.on_update(update).await?;
+            self.on_update(me, &update)
+                .await
+                .with_context(|| format!("failed to handle the update #{}", update.id))?;
         }
 
         Ok(())
     }
 
     #[instrument(skip_all, fields(update.id = update.id))]
-    async fn on_update(&self, update: Update) -> Result {
-        let UpdatePayload::Message(message) = update.payload else {
-            unreachable!("message is the only allowed update type")
+    async fn on_update(&self, me: &str, update: &Update) -> Result {
+        let UpdatePayload::Message(message) = &update.payload else {
+            panic!("The bot should only receive message updates")
         };
         info!(?message.chat, message.text, "Received");
 
-        let (Some(chat), Some(text)) = (message.chat, message.text) else {
+        let (Some(chat), Some(text)) = (&message.chat, &message.text) else {
             warn!("Message without an associated chat or text");
             return Ok(());
         };
@@ -86,22 +100,25 @@ impl Bot {
                 .call_on(&self.telegram)
                 .await?;
         } else {
-            self.handle_search(&text.trim().to_lowercase(), chat.id, reply_parameters)
+            self.handle_quick_search(me, &text.trim().to_lowercase(), chat.id, reply_parameters)
                 .await?;
         }
 
         Ok(())
     }
 
-    async fn handle_search(
+    /// Handle the quick search request from Telegram.
+    async fn handle_quick_search(
         &self,
+        me: &str,
         query: &str,
         chat_id: i64,
         reply_parameters: ReplyParameters,
     ) -> Result {
+        let query = SearchQuery::from(query);
         self.db.insert_search_query(query).await?;
         let request = SearchRequest::builder()
-            .query(query)
+            .query(query.text)
             .limit(1)
             .sort_by(SortBy::SortIndex)
             .sort_order(SortOrder::Decreasing)
@@ -110,10 +127,12 @@ impl Bot {
         let mut listings = self.marktplaats.search(&request).await?;
         if let Some(listing) = listings.inner.pop() {
             Notification::builder()
-                .chat_id(chat_id)
+                .chat_id(chat_id.into())
                 .listing(&listing)
                 .reply_parameters(reply_parameters)
-                .build()
+                .query(query)
+                .me(me)
+                .build()?
                 .send_with(&self.telegram)
                 .await?;
         } else {

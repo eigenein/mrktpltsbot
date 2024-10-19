@@ -7,7 +7,7 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
 };
 
-use crate::prelude::*;
+use crate::{bot::query::SearchQuery, prelude::*};
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
@@ -32,21 +32,17 @@ impl Db {
         Ok(Self(pool))
     }
 
-    pub async fn insert_search_query(&self, text: &str) -> Result<i64> {
-        #[allow(clippy::cast_possible_wrap)]
-        let hash = seahash::hash(text.as_bytes()) as i64;
-
+    pub async fn insert_search_query<'a>(&self, query: SearchQuery<'a>) -> Result {
         sqlx::query!(
             // language=sqlite
             "INSERT INTO search_queries (hash, text) VALUES (?1, ?2) ON CONFLICT DO UPDATE SET text = ?2",
-            hash,
-            text
+            query.hash,
+            query.text
         )
         .execute(&self.0)
         .await
-        .with_context(|| format!("failed to insert search query `{text}`"))?;
-
-        Ok(hash)
+        .with_context(|| format!("failed to insert search query `{}`", query.text))?;
+        Ok(())
     }
 }
 
@@ -56,18 +52,14 @@ mod tests {
 
     #[tokio::test]
     async fn insert_search_query_ok() -> Result {
-        let hash = Db::new(Path::new(":memory:"))
-            .await?
-            .insert_search_query("test")
-            .await?;
+        let query = SearchQuery::from("test");
 
-        assert_eq!(hash, 6_214_865_450_970_028_004);
+        let db = Db::new(Path::new(":memory:")).await?;
+
+        db.insert_search_query(query).await?;
 
         // Second insert to verify conflicts:
-        Db::new(Path::new(":memory:"))
-            .await?
-            .insert_search_query("test")
-            .await?;
+        db.insert_search_query(query).await?;
 
         Ok(())
     }

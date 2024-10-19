@@ -32,14 +32,14 @@ pub struct StartCommand<'a> {
     pub payload: StartPayload,
 }
 
-impl<'a> TryFrom<StartCommand<'a>> for Url {
+impl<'a> TryFrom<&StartCommand<'a>> for Url {
     type Error = Error;
 
     /// Serialize the `/start` command into a [deep link][1].
     ///
     /// [1]: https://core.telegram.org/bots/features#deep-linking
-    fn try_from(command: StartCommand<'a>) -> Result<Self, Self::Error> {
-        let mut url = Url::parse("https://t.me")?;
+    fn try_from(command: &StartCommand<'a>) -> Result<Self, Self::Error> {
+        let mut url = Self::parse("https://t.me")?;
         url.set_path(command.username);
         let payload = rmp_serde::to_vec_named(&command.payload)
             .context("failed to serialize the `/start` payload")?;
@@ -66,7 +66,7 @@ mod tests {
             username: "mrktpltsbot",
             payload: StartPayload::Subscribe { query_hash: 1 },
         };
-        let url = Url::try_from(command)?;
+        let url = Url::try_from(&command)?;
         assert_eq!(
             url.as_str(),
             "https://t.me/mrktpltsbot?start=gqF0o3N1YqFoAQ"
