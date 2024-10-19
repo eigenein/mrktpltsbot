@@ -79,14 +79,12 @@ impl Bot {
     #[instrument(skip_all, fields(update.id = update.id))]
     async fn on_update(&self, me: &str, update: &Update) -> Result {
         let UpdatePayload::Message(message) = &update.payload else {
-            panic!("The bot should only receive message updates")
+            bail!("The bot should only receive message updates")
+        };
+        let (Some(chat), Some(text)) = (&message.chat, &message.text) else {
+            bail!("Message without an associated chat or text");
         };
         info!(?message.chat, message.text, "Received");
-
-        let (Some(chat), Some(text)) = (&message.chat, &message.text) else {
-            warn!("Message without an associated chat or text");
-            return Ok(());
-        };
 
         let reply_parameters = ReplyParameters::builder()
             .message_id(message.id)
@@ -110,6 +108,8 @@ impl Bot {
     }
 
     /// Handle the quick search request from Telegram.
+    ///
+    /// A quick search is just a message that is not a command.
     async fn handle_quick_search(
         &self,
         me: &str,
