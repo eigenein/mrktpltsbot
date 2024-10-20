@@ -12,10 +12,9 @@ use crate::{
 
 /// Telegram bot API method.
 pub trait Method: Serialize {
-    /// Method name.
-    const NAME: &'static str;
-
     type Response: Debug + DeserializeOwned;
+
+    fn name(&self) -> &'static str;
 
     fn timeout(&self) -> Duration {
         DEFAULT_TIMEOUT
@@ -34,9 +33,11 @@ pub trait Method: Serialize {
 pub struct GetMe;
 
 impl Method for GetMe {
-    const NAME: &'static str = "getMe";
-
     type Response = User;
+
+    fn name(&self) -> &'static str {
+        "getMe"
+    }
 }
 
 /// [Update][1] types that the client wants to listen to.
@@ -73,9 +74,11 @@ pub struct GetUpdates<'a> {
 }
 
 impl<'a> Method for GetUpdates<'a> {
-    const NAME: &'static str = "getUpdates";
-
     type Response = Vec<Update>;
+
+    fn name(&self) -> &'static str {
+        "getUpdates"
+    }
 
     fn timeout(&self) -> Duration {
         DEFAULT_TIMEOUT + Duration::from_secs(self.timeout_secs.unwrap_or_default())
@@ -105,8 +108,11 @@ pub struct SendMessage<'a> {
 }
 
 impl Method for SendMessage<'_> {
-    const NAME: &'static str = "sendMessage";
     type Response = Message;
+
+    fn name(&self) -> &'static str {
+        "sendMessage"
+    }
 }
 
 /// [Send a photo][1].
@@ -135,8 +141,11 @@ pub struct SendPhoto<'a> {
 }
 
 impl Method for SendPhoto<'_> {
-    const NAME: &'static str = "sendPhoto";
     type Response = Message;
+
+    fn name(&self) -> &'static str {
+        "sendPhoto"
+    }
 }
 
 /// Use this method to [send a group][1] of photos, videos, documents or audios as an album.
@@ -156,8 +165,11 @@ pub struct SendMediaGroup<'a> {
 }
 
 impl Method for SendMediaGroup<'_> {
-    const NAME: &'static str = "sendMediaGroup";
     type Response = Vec<Message>;
+
+    fn name(&self) -> &'static str {
+        "sendMediaGroup"
+    }
 }
 
 #[derive(Serialize)]

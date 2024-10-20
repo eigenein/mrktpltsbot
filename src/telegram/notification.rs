@@ -1,18 +1,20 @@
 use std::{collections::VecDeque, iter::once};
 
 use bon::bon;
+use serde::Serialize;
 
 use crate::{
     marktplaats::listing::Picture,
-    prelude::*,
     telegram::{
-        Telegram,
-        methods::{InputMediaPhoto, Media, SendMediaGroup, SendMessage, SendPhoto},
+        methods::{InputMediaPhoto, Media, Method, SendMediaGroup, SendMessage, SendPhoto},
         objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters},
     },
 };
 
-pub enum Notification<'a> {
+/// Rich HTML notification that call the correct method on-the-fly.
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum SendNotification<'a> {
     /// Plain-text notification.
     Message(SendMessage<'a>),
 
@@ -23,26 +25,8 @@ pub enum Notification<'a> {
     MediaGroup(SendMediaGroup<'a>),
 }
 
-impl<'a> From<SendMessage<'a>> for Notification<'a> {
-    fn from(send_message: SendMessage<'a>) -> Self {
-        Self::Message(send_message)
-    }
-}
-
-impl<'a> From<SendPhoto<'a>> for Notification<'a> {
-    fn from(send_photo: SendPhoto<'a>) -> Self {
-        Self::Photo(send_photo)
-    }
-}
-
-impl<'a> From<SendMediaGroup<'a>> for Notification<'a> {
-    fn from(send_media_group: SendMediaGroup<'a>) -> Self {
-        Self::MediaGroup(send_media_group)
-    }
-}
-
 #[bon]
-impl<'a> Notification<'a> {
+impl<'a> SendNotification<'a> {
     #[builder]
     pub fn new(
         caption: &'a str,
@@ -57,23 +41,25 @@ impl<'a> Notification<'a> {
 
         // Specific representation depends on how many pictures there are.
         match image_urls.len() {
-            0 => SendMessage::builder()
-                .chat_id(chat_id)
-                .text(caption)
-                .parse_mode(ParseMode::Html)
-                .link_preview_options(LinkPreviewOptions::builder().is_disabled(true).build())
-                .maybe_reply_parameters(reply_parameters)
-                .build()
-                .into(),
+            0 => Self::Message(
+                SendMessage::builder()
+                    .chat_id(chat_id)
+                    .text(caption)
+                    .parse_mode(ParseMode::Html)
+                    .link_preview_options(LinkPreviewOptions::builder().is_disabled(true).build())
+                    .maybe_reply_parameters(reply_parameters)
+                    .build(),
+            ),
 
-            1 => SendPhoto::builder()
-                .chat_id(chat_id)
-                .photo(image_urls[0])
-                .caption(caption)
-                .parse_mode(ParseMode::Html)
-                .maybe_reply_parameters(reply_parameters)
-                .build()
-                .into(),
+            1 => Self::Photo(
+                SendPhoto::builder()
+                    .chat_id(chat_id)
+                    .photo(image_urls[0])
+                    .caption(caption)
+                    .parse_mode(ParseMode::Html)
+                    .maybe_reply_parameters(reply_parameters)
+                    .build(),
+            ),
 
             _ => {
                 let first_media = Media::InputMediaPhoto(
@@ -88,25 +74,26 @@ impl<'a> Notification<'a> {
                     .map(|url| InputMediaPhoto::builder().media(url).build())
                     .map(Media::InputMediaPhoto);
                 let media = once(first_media).chain(other_media).collect();
-                SendMediaGroup::builder()
-                    .chat_id(chat_id)
-                    .media(media)
-                    .maybe_reply_parameters(reply_parameters)
-                    .build()
-                    .into()
+                Self::MediaGroup(
+                    SendMediaGroup::builder()
+                        .chat_id(chat_id)
+                        .media(media)
+                        .maybe_reply_parameters(reply_parameters)
+                        .build(),
+                )
             }
         }
     }
+}
 
-    pub async fn send_with(&self, telegram: &Telegram) -> Result {
-        let messages = match self {
-            Self::Message(request) => vec![telegram.call(request).await?],
-            Self::Photo(request) => vec![telegram.call(request).await?],
-            Self::MediaGroup(request) => telegram.call(request).await?,
-        };
-        for message in messages {
-            debug!(message.id, "Sent");
+impl<'a> Method for SendNotification<'a> {
+    type Response = ();
+
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Message(send_message) => send_message.name(),
+            Self::Photo(send_photo) => send_photo.name(),
+            Self::MediaGroup(send_media_group) => send_media_group.name(),
         }
-        Ok(())
     }
 }
