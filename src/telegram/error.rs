@@ -30,7 +30,7 @@ pub enum TelegramError {
     },
 
     /// HTTP request failed.
-    #[error("request error")]
+    #[error("request error: {0:#}")]
     #[serde(skip)]
     RequestError(#[from] Error),
 }
