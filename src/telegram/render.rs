@@ -4,6 +4,7 @@ use std::borrow::Cow;
 
 use bon::Builder;
 use maud::{Markup, Render, html};
+use prost::Message;
 use url::Url;
 
 use crate::{
@@ -70,9 +71,10 @@ impl<'a> TryRender for StartCommand<'a> {
     fn try_render(&self) -> Result<Markup> {
         let mut url = Url::parse("https://t.me")?;
         url.set_path(self.me);
-        let payload = rmp_serde::to_vec_named(&self.payload)
-            .context("failed to serialize the `/start` payload")?;
-        url.set_query(Some(&format!("start={}", base64_url::encode(&payload))));
+        url.set_query(Some(&format!(
+            "start={}",
+            base64_url::encode(&self.payload.encode_to_vec())
+        )));
         Ok(html! { a href=(url) { (self.text) } })
     }
 }
@@ -178,12 +180,12 @@ mod tests {
     fn test_render_start_command_ok() -> Result {
         let command = StartCommand::builder()
             .me("mrktpltsbot")
-            .payload(StartPayload::Subscribe { query_hash: 1 })
+            .payload(StartPayload::subscribe_to(42))
             .text("Subscribe")
             .build();
         assert_eq!(
             command.try_render()?.into_string(),
-            r#"<a href="https://t.me/mrktpltsbot?start=gqF0o3N1YqFoAQ">Subscribe</a>"#,
+            r#"<a href="https://t.me/mrktpltsbot?start=CgIIKg">Subscribe</a>"#,
         );
         Ok(())
     }
