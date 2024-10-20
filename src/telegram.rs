@@ -28,13 +28,17 @@ impl Telegram {
         Self { client, token }
     }
 
-    #[instrument(skip_all, fields(method = R::NAME), ret(level = Level::DEBUG), err(level = Level::DEBUG))]
+    #[instrument(skip_all, fields(method = request.name()), ret(level = Level::DEBUG), err(level = Level::DEBUG))]
     pub async fn call<R>(&self, request: &R) -> Result<R::Response, TelegramError>
     where
         R: Method + ?Sized,
         R::Response: Debug + DeserializeOwned,
     {
-        let url = format!("https://api.telegram.org/bot{}/{}", self.token, R::NAME);
+        let url = format!(
+            "https://api.telegram.org/bot{}/{}",
+            self.token,
+            request.name()
+        );
         loop {
             let response = self
                 .client
@@ -43,13 +47,13 @@ impl Telegram {
                 .timeout(request.timeout())
                 .send()
                 .await
-                .with_context(|| format!("failed to call `{}`", R::NAME))?
+                .with_context(|| format!("failed to call `{}`", request.name()))?
                 .text()
                 .await
-                .with_context(|| format!("failed to read `{}` response", R::NAME))?;
+                .with_context(|| format!("failed to read `{}` response", request.name()))?;
             trace!(response, "Got raw response");
             let result = serde_json::from_str::<TelegramResult<R::Response>>(&response)
-                .with_context(|| format!("failed to deserialize `{}` response", R::NAME))?;
+                .with_context(|| format!("failed to deserialize `{}` response", request.name()))?;
             match result {
                 TelegramResult::Err(TelegramError::TooManyRequests { retry_after, .. }) => {
                     sleep(Duration::from_secs(retry_after.secs)).await;

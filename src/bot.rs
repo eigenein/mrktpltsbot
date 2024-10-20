@@ -10,7 +10,7 @@ use crate::{
     telegram::{
         Telegram,
         methods::{AllowedUpdate, GetMe, GetUpdates, Method, SendMessage},
-        notification::Notification,
+        notification::SendNotification,
         objects::{Chat, ReplyParameters, Update, UpdatePayload},
         render::{ListingCaption, TryRender},
         start::{StartCommand, StartPayload},
@@ -138,13 +138,13 @@ impl Bot {
                 .build()
                 .try_render()?
                 .into_string();
-            Notification::builder()
+            SendNotification::builder()
                 .chat_id(chat_id.into())
                 .caption(&caption)
                 .pictures(&listing.pictures)
                 .reply_parameters(reply_parameters)
                 .build()
-                .send_with(&self.telegram)
+                .call_on(&self.telegram)
                 .await?;
         } else {
             let _ = SendMessage::builder()
