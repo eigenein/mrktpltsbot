@@ -13,7 +13,7 @@ use crate::{
 mod bot;
 mod cli;
 mod client;
-mod db;
+pub mod db;
 mod logging;
 mod marktplaats;
 mod prelude;

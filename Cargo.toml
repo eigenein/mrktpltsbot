@@ -23,6 +23,9 @@ debug = "none"
 lto = "thin"
 strip = true
 
+[lints.rust]
+async_fn_in_trait = "allow"
+
 [lints.clippy]
 
 # Categories:
@@ -53,7 +56,7 @@ sentry = { version = "0.34.0", default-features = false, features = ["anyhow", "
 serde = "1.0.210"
 serde_json = "1.0.131"
 serde_qs = "0.13.0"
-sqlx = { version = "0.8.2", features = ["derive", "migrate", "runtime-tokio", "sqlite"] }
+sqlx = { version = "0.8.2", features = ["migrate", "runtime-tokio", "sqlite"] }
 thiserror = "1.0.64"
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.40"

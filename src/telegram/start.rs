@@ -24,14 +24,14 @@ pub struct StartPayload {
 }
 
 impl StartPayload {
-    pub const fn subscribe_to(query_hash: i64) -> Self {
+    pub const fn subscribe_to(query_hash: u64) -> Self {
         Self {
             subscribe: Some(SubscriptionStartCommand { query_hash }),
             unsubscribe: None,
         }
     }
 
-    pub const fn unsubscribe_from(query_hash: i64) -> Self {
+    pub const fn unsubscribe_from(query_hash: u64) -> Self {
         Self {
             subscribe: None,
             unsubscribe: Some(SubscriptionStartCommand { query_hash }),
@@ -41,6 +41,6 @@ impl StartPayload {
 
 #[derive(Message)]
 pub struct SubscriptionStartCommand {
-    #[prost(tag = "1", int64)]
-    pub query_hash: i64,
+    #[prost(tag = "1", fixed64)]
+    pub query_hash: u64,
 }
