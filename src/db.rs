@@ -1,3 +1,6 @@
+pub mod search_query;
+pub mod subscription;
+
 use std::path::Path;
 
 use anyhow::Context;
@@ -7,7 +10,7 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
 };
 
-use crate::{bot::query::SearchQuery, prelude::*};
+use crate::{db::search_query::SearchQuery, prelude::*};
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
@@ -31,19 +34,10 @@ impl Db {
             .context("failed to migrate the database")?;
         Ok(Self(pool))
     }
+}
 
-    pub async fn insert_search_query<'a>(&self, query: &SearchQuery) -> Result {
-        sqlx::query!(
-            // language=sqlite
-            "INSERT INTO search_queries (hash, text) VALUES (?1, ?2) ON CONFLICT DO UPDATE SET text = ?2",
-            query.hash,
-            query.text
-        )
-        .execute(&self.0)
-        .await
-        .with_context(|| format!("failed to insert search query `{}`", query.text))?;
-        Ok(())
-    }
+pub trait Insert<T> {
+    async fn insert(&self, item: &T) -> Result;
 }
 
 #[cfg(test)]
@@ -56,10 +50,10 @@ mod tests {
 
         let db = Db::new(Path::new(":memory:")).await?;
 
-        db.insert_search_query(&query).await?;
+        db.insert(&query).await?;
 
         // Second insert to verify conflicts:
-        db.insert_search_query(&query).await?;
+        db.insert(&query).await?;
 
         Ok(())
     }

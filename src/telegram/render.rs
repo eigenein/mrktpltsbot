@@ -8,7 +8,7 @@ use prost::Message;
 use url::Url;
 
 use crate::{
-    bot::query::SearchQuery,
+    db::search_query::SearchQuery,
     marktplaats::listing::{
         Attribute,
         Condition,
@@ -185,7 +185,7 @@ mod tests {
             .build();
         assert_eq!(
             command.try_render()?.into_string(),
-            r#"<a href="https://t.me/mrktpltsbot?start=CgIIKg">Subscribe</a>"#,
+            r#"<a href="https://t.me/mrktpltsbot?start=CgkJKgAAAAAAAAA">Subscribe</a>"#,
         );
         Ok(())
     }

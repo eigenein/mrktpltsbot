@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 
-pub use anyhow::{anyhow, bail, Context, Error};
-pub use tracing::{debug, error, info, instrument, trace, warn, Level};
+pub use anyhow::{Context, Error, anyhow, bail};
+pub use tracing::{Level, debug, error, info, instrument, trace, warn};
 
 pub type Result<T = (), E = Error> = anyhow::Result<T, E>;

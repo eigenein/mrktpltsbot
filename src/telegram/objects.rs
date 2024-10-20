@@ -91,7 +91,7 @@ pub struct MessageEntity {
     pub custom_emoji_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Deserialize)]
 #[must_use]
 pub struct Chat {
     pub id: i64,
