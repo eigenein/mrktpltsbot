@@ -16,7 +16,7 @@ use crate::{
         notification::Notification,
         objects::{ReplyParameters, Update, UpdatePayload},
         render::{ListingCaption, TryRender},
-        start::StartCommand,
+        start::{StartCommand, StartPayload},
     },
 };
 
@@ -125,7 +125,7 @@ impl Bot {
             let subscribe_command = StartCommand::builder()
                 .me(me)
                 .text("Subscribe")
-                .payload(query.subscribe())
+                .payload(StartPayload::subscribe_to(query.hash))
                 .build();
             let caption = ListingCaption::builder()
                 .listing(&listing)
