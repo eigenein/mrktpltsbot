@@ -1,6 +1,5 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use backoff::ExponentialBackoff;
 use bon::Builder;
 
 use crate::{
@@ -40,40 +39,29 @@ impl Bot {
 
         info!(me, "Running Telegram bot…");
         loop {
-            backoff::future::retry_notify(
-                ExponentialBackoff::default(),
-                || async { Ok(self.handle_telegram_updates(&me).await?) },
-                |error, _| {
-                    warn!("Failed to handle Telegram updates: {error:#}");
-                },
-            )
-            .await
-            .context("fatal error")?;
+            let updates = GetUpdates::builder()
+                .offset(self.offset.load(Ordering::Relaxed))
+                .timeout_secs(self.poll_timeout_secs)
+                .allowed_updates(&[AllowedUpdate::Message])
+                .build()
+                .call_on(&self.telegram)
+                .await?;
+            info!(n = updates.len(), "Received Telegram updates");
+
+            for update in updates {
+                self.offset.store(update.id + 1, Ordering::Relaxed);
+                if let Err(error) = self.on_update(&me, &update).await {
+                    error!("Failed to handle the update #{}: {error:#}", update.id);
+                }
+            }
         }
     }
 
-    #[instrument(skip_all)]
-    async fn handle_telegram_updates(&self, me: &str) -> Result {
-        let updates = GetUpdates::builder()
-            .offset(self.offset.load(Ordering::Relaxed))
-            .timeout_secs(self.poll_timeout_secs)
-            .allowed_updates(&[AllowedUpdate::Message])
-            .build()
-            .call_on(&self.telegram)
-            .await?;
-        info!(n_updates = updates.len(), "Received");
-
-        for update in updates {
-            self.offset.store(update.id + 1, Ordering::Relaxed);
-            self.on_update(me, &update)
-                .await
-                .with_context(|| format!("failed to handle the update #{}", update.id))?;
-        }
-
-        Ok(())
-    }
-
-    #[instrument(skip_all, fields(update.id = update.id), err(level = Level::DEBUG))]
+    #[instrument(
+        skip_all,
+        fields(update.id = update.id),
+        err(level = Level::DEBUG),
+    )]
     async fn on_update(&self, me: &str, update: &Update) -> Result {
         let UpdatePayload::Message(message) = &update.payload else {
             bail!("The bot should only receive message updates")
@@ -81,15 +69,20 @@ impl Bot {
         let (Some(chat), Some(text)) = (&message.chat, &message.text) else {
             bail!("Message without an associated chat or text");
         };
-        info!(?message.chat, message.text, "Received");
+        info!(chat.id, text, "Received");
 
         let reply_parameters = ReplyParameters::builder()
             .message_id(message.id)
             .allow_sending_without_reply(true)
             .build();
-        self.handle_message(me, chat, text, reply_parameters).await // TODO: report errors to user.
+        self.handle_message(me, chat, text, reply_parameters)
+            .await?; // TODO: inspect errors to user.
+
+        info!("Finished");
+        Ok(())
     }
 
+    #[instrument(skip_all, name = "message")]
     async fn handle_message(
         &self,
         me: &str,
@@ -108,6 +101,7 @@ impl Bot {
     /// Handle the search request from Telegram.
     ///
     /// A search request is just a message that is not a command.
+    #[instrument(skip_all, name = "search")]
     async fn handle_search(
         &self,
         me: &str,
@@ -125,6 +119,7 @@ impl Bot {
             .search_in_title_and_description(true)
             .build();
         let mut listings = self.marktplaats.search(&request).await?;
+        info!(n_listings = listings.inner.len());
         if let Some(listing) = listings.inner.pop() {
             let subscribe_command = StartCommand::builder()
                 .me(me)
@@ -158,6 +153,7 @@ impl Bot {
         Ok(())
     }
 
+    #[instrument(skip_all, name = "command")]
     async fn handle_command(
         &self,
         text: &str,

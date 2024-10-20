@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, iter::once};
 
 use bon::bon;
-use serde::Serialize;
+use serde::{Serialize, de::IgnoredAny};
 
 use crate::{
     marktplaats::listing::Picture,
@@ -87,7 +87,7 @@ impl<'a> SendNotification<'a> {
 }
 
 impl<'a> Method for SendNotification<'a> {
-    type Response = ();
+    type Response = IgnoredAny;
 
     fn name(&self) -> &'static str {
         match self {
