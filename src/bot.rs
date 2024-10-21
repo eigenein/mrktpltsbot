@@ -57,11 +57,7 @@ impl Bot {
         }
     }
 
-    #[instrument(
-        skip_all,
-        fields(update.id = update.id),
-        err(level = Level::DEBUG),
-    )]
+    #[instrument(skip_all, err(level = Level::DEBUG))]
     async fn on_update(&self, me: &str, update: &Update) -> Result {
         let UpdatePayload::Message(message) = &update.payload else {
             bail!("The bot should only receive message updates")
@@ -69,21 +65,20 @@ impl Bot {
         let (Some(chat), Some(text)) = (&message.chat, &message.text) else {
             bail!("Message without an associated chat or text");
         };
-        info!(chat.id, text, "Received");
+        info!(update.id, chat.id, text, "Received");
 
         let reply_parameters = ReplyParameters::builder()
             .message_id(message.id)
             .allow_sending_without_reply(true)
             .build();
-        self.handle_message(me, chat, text, reply_parameters)
-            .await?; // TODO: inspect errors to user.
+        self.on_message(me, chat, text, reply_parameters).await?; // TODO: inspect errors to user.
 
-        info!("Ok");
+        info!(update.id, "Done");
         Ok(())
     }
 
-    #[instrument(skip_all, name = "message")]
-    async fn handle_message(
+    #[instrument(skip_all)]
+    async fn on_message(
         &self,
         me: &str,
         chat: &Chat,
@@ -93,16 +88,15 @@ impl Bot {
         if text.starts_with('/') {
             self.handle_command(text, chat.id, reply_parameters).await
         } else {
-            self.handle_search(me, text, chat.id, reply_parameters)
-                .await
+            self.on_search(me, text, chat.id, reply_parameters).await
         }
     }
 
     /// Handle the search request from Telegram.
     ///
     /// A search request is just a message that is not a command.
-    #[instrument(skip_all, name = "search")]
-    async fn handle_search(
+    #[instrument(skip_all)]
+    async fn on_search(
         &self,
         me: &str,
         query: &str,
@@ -111,6 +105,7 @@ impl Bot {
     ) -> Result {
         let query = SearchQuery::from(query);
         self.db.insert(&query).await?;
+
         let request = SearchRequest::builder()
             .query(&query.text)
             .limit(1)
@@ -119,7 +114,8 @@ impl Bot {
             .search_in_title_and_description(true)
             .build();
         let mut listings = self.marktplaats.search(&request).await?;
-        info!(n_listings = listings.inner.len());
+        info!(query.hash, query.text, n_listings = listings.inner.len());
+
         if let Some(listing) = listings.inner.pop() {
             let subscribe_command = StartCommand::builder()
                 .me(me)
@@ -150,6 +146,7 @@ impl Bot {
                 .call_on(&self.telegram)
                 .await?;
         }
+
         Ok(())
     }
 

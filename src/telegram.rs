@@ -36,7 +36,7 @@ impl Telegram {
     }
 
     /// Call the Telegram Bot API method with automatic throttling and retrying.
-    #[instrument(skip_all)]
+    #[instrument(skip_all, name = "call_telegram")]
     pub async fn call<R>(&self, request: &R) -> Result<R::Response>
     where
         R: Method + ?Sized,
@@ -60,7 +60,7 @@ impl Telegram {
 
             let error = match result {
                 Ok(TelegramResult::Ok { result, .. }) => {
-                    info!(name = request.name(), "Ok");
+                    info!(name = request.name(), "Done");
                     break Ok(result);
                 }
 

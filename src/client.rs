@@ -70,6 +70,7 @@ impl RequestBuilder {
     pub async fn read_text(self, error_for_status: bool) -> Result<String> {
         let response = self.0.send().await.context("failed to send the request")?;
         let status = response.status();
+        trace!(url = ?response.url(), ?status, "Reading response…");
         let body = response
             .text()
             .await
