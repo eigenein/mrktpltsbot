@@ -36,7 +36,7 @@ impl Telegram {
     }
 
     /// Call the Telegram Bot API method with automatic throttling and retrying.
-    #[instrument(skip_all, fields(method = request.name(), timeout = ?request.timeout()))]
+    #[instrument(skip_all)]
     pub async fn call<R>(&self, request: &R) -> Result<R::Response>
     where
         R: Method + ?Sized,
@@ -60,12 +60,12 @@ impl Telegram {
 
             let error = match result {
                 Ok(TelegramResult::Ok { result, .. }) => {
-                    info!("Ok");
+                    info!(name = request.name(), "Ok");
                     break Ok(result);
                 }
 
                 Ok(TelegramResult::Err(TelegramError::TooManyRequests { retry_after, .. })) => {
-                    warn!(retry_after.secs, "Throttling");
+                    warn!(name = request.name(), retry_after.secs, "Throttling");
                     sleep(Duration::from_secs(retry_after.secs)).await;
                     continue;
                 }
@@ -76,10 +76,14 @@ impl Telegram {
             };
 
             if let Some(duration) = backoff.next_backoff() {
-                warn!(?duration, "Retrying after the error: {error:#}");
+                warn!(
+                    name = request.name(),
+                    ?duration,
+                    "Retrying after the error: {error:#}",
+                );
                 sleep(duration).await;
             } else {
-                warn!("All attempts have failed");
+                warn!(name = request.name(), "All attempts have failed");
                 break Err(error);
             }
         }
