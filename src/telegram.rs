@@ -9,11 +9,12 @@ pub mod start;
 use std::{fmt::Debug, time::Duration};
 
 use backoff::{ExponentialBackoff, backoff::Backoff};
-use reqwest::Client;
 use serde::de::DeserializeOwned;
 use tokio::time::sleep;
+use url::Url;
 
 use crate::{
+    client::Client,
     prelude::*,
     telegram::{error::TelegramError, methods::Method, result::TelegramResult},
 };
@@ -22,73 +23,64 @@ use crate::{
 pub struct Telegram {
     client: Client,
     token: String,
+    root_url: Url,
 }
 
 impl Telegram {
-    pub const fn new(client: Client, token: String) -> Self {
-        Self { client, token }
+    pub fn new(client: Client, token: String) -> Result<Self> {
+        Ok(Self {
+            client,
+            token,
+            root_url: Url::parse("https://api.telegram.org")?,
+        })
     }
 
-    #[instrument(skip_all, ret(level = Level::DEBUG), err(level = Level::DEBUG))]
-    async fn call_once<R>(&self, request: &R) -> Result<R::Response, TelegramError>
+    /// Call the Telegram Bot API method with automatic throttling and retrying.
+    #[instrument(skip_all, fields(method = request.name(), timeout = ?request.timeout()))]
+    pub async fn call<R>(&self, request: &R) -> Result<R::Response>
     where
         R: Method + ?Sized,
         R::Response: Debug + DeserializeOwned,
     {
-        let method_name = request.name();
-        let url = format!(
-            "https://api.telegram.org/bot{}/{}",
-            self.token,
-            request.name()
-        ); // TODO: build URL once.
-        let response = self
+        let mut url = self.root_url.clone();
+        url.set_path(&format!("bot{}/{}", self.token, request.name()));
+
+        let request_builder = self
             .client
-            .post(&url)
-            .json(&request) // TODO: serialize once.
-            .timeout(request.timeout())
-            .send()
-            .await
-            .with_context(|| format!("failed to call `{method_name}`"))?
-            .text()
-            .await
-            .with_context(|| format!("failed to read `{method_name}` response"))?;
-        trace!(response, "Received response"); // TODO: proper tracing.
-        serde_json::from_str::<TelegramResult<R::Response>>(&response)
-            .with_context(|| format!("failed to deserialize `{method_name}` response"))?
-            .into()
-    }
+            .request(reqwest::Method::POST, url)
+            .json(request)
+            .timeout(request.timeout());
 
-    #[instrument(skip_all, fields(method = request.name()))]
-    pub async fn call<R>(&self, request: &R) -> Result<R::Response, TelegramError>
-    where
-        R: Method + ?Sized,
-        R::Response: Debug + DeserializeOwned,
-    {
         let mut backoff = ExponentialBackoff::default();
         loop {
-            match self.call_once(request).await {
-                // Success:
-                result @ Ok(_) => {
+            let result = request_builder
+                .try_clone()?
+                .read_json::<TelegramResult<R::Response>>(false)
+                .await;
+
+            let error = match result {
+                Ok(TelegramResult::Ok { result, .. }) => {
                     info!("Ok");
-                    break result;
+                    break Ok(result);
                 }
 
-                // Rate limit exceeded:
-                Err(TelegramError::TooManyRequests { retry_after, .. }) => {
+                Ok(TelegramResult::Err(TelegramError::TooManyRequests { retry_after, .. })) => {
                     warn!(retry_after.secs, "Throttling");
                     sleep(Duration::from_secs(retry_after.secs)).await;
+                    continue;
                 }
 
-                // Unexpected error:
-                Err(error) => {
-                    if let Some(duration) = backoff.next_backoff() {
-                        warn!(?duration, "Retrying after the error: {error:#}");
-                        sleep(duration).await;
-                    } else {
-                        warn!("All attempts have failed");
-                        break Err(error);
-                    }
-                }
+                Ok(TelegramResult::Err(error)) => anyhow!("Telegram Bot API error: {error:#}"),
+
+                Err(error) => error,
+            };
+
+            if let Some(duration) = backoff.next_backoff() {
+                warn!(?duration, "Retrying after the error: {error:#}");
+                sleep(duration).await;
+            } else {
+                warn!("All attempts have failed");
+                break Err(error);
             }
         }
     }

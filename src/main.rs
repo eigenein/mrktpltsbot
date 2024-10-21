@@ -3,7 +3,7 @@ use clap::Parser;
 use crate::{
     bot::Bot,
     cli::Cli,
-    client::build_client,
+    client::Client,
     db::Db,
     marktplaats::Marktplaats,
     prelude::*,
@@ -31,9 +31,9 @@ async fn main() -> Result {
 
 async fn fallible_main(cli: Cli) -> Result {
     let db = Db::new(&cli.db).await?;
-    let client = build_client()?;
+    let client = Client::new()?;
     let marktplaats = Marktplaats(client.clone());
-    let telegram = Telegram::new(client, cli.bot_token);
+    let telegram = Telegram::new(client, cli.bot_token)?;
 
     Bot::builder()
         .telegram(telegram)

@@ -4,10 +4,10 @@ use bon::Builder;
 use reqwest::Url;
 use serde::Serialize;
 
-use crate::{marktplaats::listing::Listings, prelude::*};
+use crate::{client::Client, marktplaats::listing::Listings, prelude::*};
 
 #[must_use]
-pub struct Marktplaats(pub reqwest::Client);
+pub struct Marktplaats(pub Client);
 
 impl Marktplaats {
     /// Search Marktplaats.
@@ -17,23 +17,18 @@ impl Marktplaats {
     /// Raw response payload.
     #[instrument(skip_all, fields(query = request.query), ret(Debug, level = Level::DEBUG), err(level = Level::DEBUG))]
     pub async fn search(&self, request: &SearchRequest<'_>) -> Result<Listings> {
-        let query =
-            serde_qs::to_string(request).context("failed to serialize the search request")?;
-        let mut url = Url::parse("https://www.marktplaats.nl/lrp/api/search")?;
-        url.set_query(Some(&query));
-        let response = self
-            .0
-            .get(url)
-            .send()
+        let url = {
+            let query =
+                serde_qs::to_string(request).context("failed to serialize the search request")?;
+            let mut url = Url::parse("https://www.marktplaats.nl/lrp/api/search")?;
+            url.set_query(Some(&query));
+            url
+        };
+        self.0
+            .request(reqwest::Method::GET, url)
+            .read_json(true)
             .await
-            .with_context(|| format!("failed to request a search for `{query}`"))?
-            .error_for_status()?
-            .text()
-            .await
-            .with_context(|| format!("failed to receive the search response for `{query}`"))?;
-        debug!(response, "received response"); // TODO: proper tracing.
-        serde_json::from_str(&response)
-            .with_context(|| format!("failed to parse search response for `{query}`"))
+            .with_context(|| format!("failed to search for `{:?}`", request.query))
     }
 }
 

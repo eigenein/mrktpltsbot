@@ -4,10 +4,10 @@ use bon::{Builder, builder};
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
-    client::DEFAULT_TIMEOUT,
+    client::Client,
     prelude::*,
     serde::as_inner_json,
-    telegram::{Telegram, error::TelegramError, objects::*},
+    telegram::{Telegram, objects::*},
 };
 
 /// Telegram bot API method.
@@ -17,10 +17,10 @@ pub trait Method: Serialize {
     fn name(&self) -> &'static str;
 
     fn timeout(&self) -> Duration {
-        DEFAULT_TIMEOUT
+        Client::DEFAULT_TIMEOUT
     }
 
-    async fn call_on(&self, telegram: &Telegram) -> Result<Self::Response, TelegramError> {
+    async fn call_on(&self, telegram: &Telegram) -> Result<Self::Response> {
         telegram.call(self).await
     }
 }
@@ -81,7 +81,7 @@ impl<'a> Method for GetUpdates<'a> {
     }
 
     fn timeout(&self) -> Duration {
-        DEFAULT_TIMEOUT + Duration::from_secs(self.timeout_secs.unwrap_or_default())
+        Client::DEFAULT_TIMEOUT + Duration::from_secs(self.timeout_secs.unwrap_or_default())
     }
 }
 
