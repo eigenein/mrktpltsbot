@@ -78,7 +78,7 @@ impl Bot {
         self.handle_message(me, chat, text, reply_parameters)
             .await?; // TODO: inspect errors to user.
 
-        info!("Finished");
+        info!("Ok");
         Ok(())
     }
 

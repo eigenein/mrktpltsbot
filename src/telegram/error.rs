@@ -20,7 +20,6 @@ pub enum TelegramError {
         retry_after: RetryAfterParameters,
     },
 
-    /// HTTP request succeeded, but the API has returned an error.
     #[error("API error ({error_code}) {description}")]
     ApiError {
         ok: MustBe!(false),
@@ -28,11 +27,6 @@ pub enum TelegramError {
         description: String,
         error_code: i32,
     },
-
-    /// HTTP request failed.
-    #[error("request error: {0:#}")]
-    #[serde(skip)]
-    RequestError(#[from] Error),
 }
 
 /// [Additional error details for exceeded rate limit][1].
