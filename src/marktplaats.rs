@@ -31,7 +31,7 @@ impl Marktplaats {
             .text()
             .await
             .with_context(|| format!("failed to receive the search response for `{query}`"))?;
-        debug!(response, "received response");
+        debug!(response, "received response"); // TODO: proper tracing.
         serde_json::from_str(&response)
             .with_context(|| format!("failed to parse search response for `{query}`"))
     }

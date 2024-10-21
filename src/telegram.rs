@@ -40,11 +40,11 @@ impl Telegram {
             "https://api.telegram.org/bot{}/{}",
             self.token,
             request.name()
-        );
+        ); // TODO: build URL once.
         let response = self
             .client
             .post(&url)
-            .json(&request)
+            .json(&request) // TODO: serialize once.
             .timeout(request.timeout())
             .send()
             .await
@@ -52,7 +52,7 @@ impl Telegram {
             .text()
             .await
             .with_context(|| format!("failed to read `{method_name}` response"))?;
-        trace!(response, "Received response");
+        trace!(response, "Received response"); // TODO: proper tracing.
         serde_json::from_str::<TelegramResult<R::Response>>(&response)
             .with_context(|| format!("failed to deserialize `{method_name}` response"))?
             .into()
