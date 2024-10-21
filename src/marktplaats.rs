@@ -15,7 +15,7 @@ impl Marktplaats {
     /// # Returns
     ///
     /// Raw response payload.
-    #[instrument(skip_all, fields(query = request.query), ret(Debug, level = Level::DEBUG), err(level = Level::DEBUG))]
+    #[instrument(skip_all, ret(Debug, level = Level::DEBUG), err(level = Level::DEBUG))]
     pub async fn search(&self, request: &SearchRequest<'_>) -> Result<Listings> {
         let url = {
             let query =
