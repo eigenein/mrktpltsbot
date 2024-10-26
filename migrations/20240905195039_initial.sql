@@ -28,11 +28,8 @@ CREATE TABLE subscriptions
 -- Sent notifications.
 CREATE TABLE notifications
 (
-    item_id    TEXT    NOT NULL REFERENCES items (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    chat_id    INTEGER NOT NULL,
-    query_hash INTEGER NOT NULL,
-    message_id INTEGER NOT NULL,
+    item_id TEXT    NOT NULL REFERENCES items (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    chat_id INTEGER NOT NULL,
 
-    PRIMARY KEY (item_id, chat_id),
-    FOREIGN KEY (chat_id, query_hash) REFERENCES subscriptions (chat_id, query_hash) ON UPDATE CASCADE ON DELETE CASCADE
+    PRIMARY KEY (item_id, chat_id)
 );

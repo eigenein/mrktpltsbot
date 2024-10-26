@@ -21,8 +21,7 @@ impl Db {
     pub async fn new(path: &Path) -> Result<Self> {
         let options = SqliteConnectOptions::new()
             .create_if_missing(true)
-            .filename(path)
-            .journal_mode(SqliteJournalMode::Wal);
+            .filename(path);
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
             .connect_with(options)
