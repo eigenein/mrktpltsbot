@@ -19,19 +19,8 @@ use crate::{
         Price,
         Seller,
     },
-    prelude::*,
     telegram::start::StartCommand,
 };
-
-pub trait TryRender {
-    fn try_render(&self) -> Result<Markup>;
-}
-
-impl<R: Render> TryRender for R {
-    fn try_render(&self) -> Result<Markup> {
-        Ok(self.render())
-    }
-}
 
 #[derive(Builder)]
 pub struct ListingCaption<'a> {
@@ -40,15 +29,15 @@ pub struct ListingCaption<'a> {
     commands: &'a [StartCommand<'a>],
 }
 
-impl<'a> TryRender for ListingCaption<'a> {
-    fn try_render(&self) -> Result<Markup> {
-        Ok(html! {
+impl<'a> Render for ListingCaption<'a> {
+    fn render(&self) -> Markup {
+        html! {
             strong { a href=(self.listing.https_url()) { (self.listing.title) } }
             "\n"
             em { (self.search_query.text) }
             @for command in self.commands {
                 strong { " • " }
-                (command.try_render()?)
+                (command)
             }
             "\n\n"
             (self.listing.price)
@@ -63,19 +52,18 @@ impl<'a> TryRender for ListingCaption<'a> {
                 strong { " • " }
                 (self.listing.location)
             }
-        })
+        }
     }
 }
 
-impl<'a> TryRender for StartCommand<'a> {
-    fn try_render(&self) -> Result<Markup> {
-        let mut url = Url::parse("https://t.me")?;
-        url.set_path(self.me);
-        url.set_query(Some(&format!(
-            "start={}",
+impl<'a> Render for StartCommand<'a> {
+    fn render(&self) -> Markup {
+        let url = format!(
+            "https://t.me/{}?start={}",
+            self.me,
             base64_url::encode(&self.payload.encode_to_vec())
-        )));
-        Ok(html! { a href=(url) { (self.text) } })
+        );
+        html! { a href=(url) { (self.text) } }
     }
 }
 
@@ -177,16 +165,15 @@ mod tests {
     use crate::telegram::start::StartPayload;
 
     #[test]
-    fn test_render_start_command_ok() -> Result {
+    fn test_render_start_command_ok() {
         let command = StartCommand::builder()
             .me("mrktpltsbot")
             .payload(StartPayload::subscribe_to(42))
             .text("Subscribe")
             .build();
         assert_eq!(
-            command.try_render()?.into_string(),
+            command.render().into_string(),
             r#"<a href="https://t.me/mrktpltsbot?start=CgkJKgAAAAAAAAA">Subscribe</a>"#,
         );
-        Ok(())
     }
 }

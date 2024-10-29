@@ -1,3 +1,5 @@
+//! `/start` command.
+
 use bon::Builder;
 use prost::Message;
 

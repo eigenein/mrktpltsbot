@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use bon::Builder;
+use maud::Render;
 
 use crate::{
     db::{
@@ -14,7 +15,7 @@ use crate::{
         methods::{AllowedUpdate, GetMe, GetUpdates, Method, SendMessage},
         notification::SendNotification,
         objects::{Chat, ParseMode, ReplyParameters, Update, UpdatePayload},
-        render::{ListingCaption, TryRender},
+        render::ListingCaption,
         start::{StartCommand, StartPayload},
     },
 };
@@ -128,7 +129,7 @@ impl Bot {
                 .search_query(query)
                 .commands(&[subscribe_command])
                 .build()
-                .try_render()?
+                .render()
                 .into_string();
             SendNotification::builder()
                 .chat_id(chat_id.into())
