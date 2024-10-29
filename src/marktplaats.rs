@@ -61,6 +61,19 @@ pub struct SearchRequest<'a> {
     pub seller_ids: &'a [u32],
 }
 
+impl<'a> SearchRequest<'a> {
+    /// Build a «standard» for this application search request.
+    pub fn standard(query: &'a str, limit: u32) -> Self {
+        Self::builder()
+            .query(query)
+            .limit(limit)
+            .search_in_title_and_description(true)
+            .sort_by(SortBy::SortIndex)
+            .sort_order(SortOrder::Decreasing)
+            .build()
+    }
+}
+
 #[must_use]
 #[derive(Serialize)]
 pub enum SortBy {

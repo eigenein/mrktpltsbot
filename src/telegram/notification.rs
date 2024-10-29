@@ -63,6 +63,7 @@ impl<'a> SendNotification<'a> {
 
             _ => {
                 let first_media = Media::InputMediaPhoto(
+                    // Telegram needs the description in the first photo's caption.
                     InputMediaPhoto::builder()
                         .media(image_urls.pop_front().unwrap())
                         .caption(caption)

@@ -1,7 +1,7 @@
 use bon::Builder;
 use prost::Message;
 
-/// Start command with a [deep link][1], for example: `https://t.me/mrktpltsbot?start=gqF0o3N1YqFoAQ`.
+/// Start command with a [deep link][1].
 ///
 /// [1]: https://core.telegram.org/bots/features#deep-linking
 #[derive(Builder)]
@@ -11,7 +11,7 @@ pub struct StartCommand<'a> {
     pub payload: StartPayload,
 }
 
-/// Start command with a [deep link][1], for example: `https://t.me/mrktpltsbot?start=TODO`.
+/// Payload for a [`StartCommand`] with a [deep link][1].
 ///
 /// [1]: https://core.telegram.org/bots/features#deep-linking
 #[derive(Message)]

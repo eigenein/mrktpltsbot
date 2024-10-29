@@ -7,13 +7,13 @@ use crate::{
         Db,
         search_query::{SearchQueries, SearchQuery},
     },
-    marktplaats::{Marktplaats, SearchRequest, SortBy, SortOrder},
+    marktplaats::{Marktplaats, SearchRequest},
     prelude::*,
     telegram::{
         Telegram,
         methods::{AllowedUpdate, GetMe, GetUpdates, Method, SendMessage},
         notification::SendNotification,
-        objects::{Chat, ReplyParameters, Update, UpdatePayload},
+        objects::{Chat, ParseMode, ReplyParameters, Update, UpdatePayload},
         render::{ListingCaption, TryRender},
         start::{StartCommand, StartPayload},
     },
@@ -106,28 +106,24 @@ impl Bot {
         chat_id: i64,
         reply_parameters: ReplyParameters,
     ) -> Result {
+        let request = SearchRequest::standard(query, 1);
+        let mut listings = self.marktplaats.search(&request).await?;
+        info!(query, n_listings = listings.inner.len());
+
         let query = SearchQuery::from(query);
         SearchQueries(&mut *self.db.connection().await)
             .upsert(&query)
             .await?;
 
-        let request = SearchRequest::builder()
-            .query(&query.text)
-            .limit(1)
-            .sort_by(SortBy::SortIndex)
-            .sort_order(SortOrder::Decreasing)
-            .search_in_title_and_description(true)
+        // We need the subscribe command anyway, even if no listings were found.
+        let subscribe_command = StartCommand::builder()
+            .me(me)
+            .text("Subscribe")
+            .payload(StartPayload::subscribe_to(query.hash))
             .build();
-        let mut listings = self.marktplaats.search(&request).await?;
-        info!(query.hash, query.text, n_listings = listings.inner.len());
 
         if let Some(listing) = listings.inner.pop() {
-            let subscribe_command = StartCommand::builder()
-                .me(me)
-                .text("Subscribe")
-                .payload(StartPayload::subscribe_to(query.hash))
-                .build();
-            let caption = ListingCaption::builder()
+            let description = ListingCaption::builder()
                 .listing(&listing)
                 .search_query(query)
                 .commands(&[subscribe_command])
@@ -136,7 +132,7 @@ impl Bot {
                 .into_string();
             SendNotification::builder()
                 .chat_id(chat_id.into())
-                .caption(&caption)
+                .caption(&description)
                 .pictures(&listing.pictures)
                 .reply_parameters(reply_parameters)
                 .build()
@@ -146,6 +142,7 @@ impl Bot {
             let _ = SendMessage::builder()
                 .chat_id(chat_id)
                 .text("There is no item matching the search query")
+                .parse_mode(ParseMode::Html)
                 .reply_parameters(reply_parameters)
                 .build()
                 .call_on(&self.telegram)
