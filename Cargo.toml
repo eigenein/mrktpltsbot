@@ -37,6 +37,7 @@ pedantic = { level = "warn", priority = -1 }
 future_not_send = "allow"
 missing_errors_doc = "allow"
 module_name_repetitions = "allow"
+significant_drop_tightening = "allow"
 
 [dependencies]
 anyhow = { version = "1.0.90", features = ["backtrace"] }

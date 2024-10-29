@@ -3,7 +3,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use bon::Builder;
 
 use crate::{
-    db::{Db, Insert, search_query::SearchQuery},
+    db::{
+        Db,
+        search_query::{SearchQueries, SearchQuery},
+    },
     marktplaats::{Marktplaats, SearchRequest, SortBy, SortOrder},
     prelude::*,
     telegram::{
@@ -104,7 +107,9 @@ impl Bot {
         reply_parameters: ReplyParameters,
     ) -> Result {
         let query = SearchQuery::from(query);
-        self.db.insert(&query).await?;
+        SearchQueries(&mut *self.db.connection().await)
+            .upsert(&query)
+            .await?;
 
         let request = SearchRequest::builder()
             .query(&query.text)

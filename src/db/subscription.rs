@@ -1,14 +1,17 @@
 use anyhow::Context;
+use sqlx::SqliteConnection;
 
-use crate::db::{Db, Insert};
+use crate::prelude::*;
 
 pub struct Subscription {
     pub query_hash: u64,
     pub chat_id: i64,
 }
 
-impl Insert<Subscription> for Db {
-    async fn insert(&self, subscription: &Subscription) -> crate::prelude::Result {
+pub struct Subscriptions<'a>(&'a mut SqliteConnection);
+
+impl<'a> Subscriptions<'a> {
+    pub async fn upsert(&mut self, subscription: &Subscription) -> Result {
         // SQLx does not support `u64`.
         #[expect(clippy::cast_possible_wrap)]
         let hash = subscription.query_hash as i64;
@@ -19,7 +22,7 @@ impl Insert<Subscription> for Db {
             hash,
             subscription.chat_id
         )
-            .execute(&self.0)
+            .execute(&mut *self.0)
             .await
             .context("failed to insert the subscription")?;
 

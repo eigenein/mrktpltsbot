@@ -4,56 +4,32 @@ pub mod subscription;
 use std::path::Path;
 
 use anyhow::Context;
-use sqlx::{
-    SqlitePool,
-    migrate::Migrator,
-    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
-};
+use sqlx::{ConnectOptions, SqliteConnection, migrate::Migrator, sqlite::SqliteConnectOptions};
+use tokio::sync::{Mutex, MutexGuard};
 
-use crate::{db::search_query::SearchQuery, prelude::*};
+use crate::prelude::*;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
 #[must_use]
-pub struct Db(SqlitePool);
+pub struct Db(Mutex<SqliteConnection>);
 
 impl Db {
     pub async fn new(path: &Path) -> Result<Self> {
-        let options = SqliteConnectOptions::new()
+        let mut connection = SqliteConnectOptions::new()
             .create_if_missing(true)
-            .filename(path);
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect_with(options)
+            .filename(path)
+            .connect()
             .await
             .with_context(|| format!("failed to open database `{path:?}`"))?;
         MIGRATOR
-            .run(&pool)
+            .run(&mut connection)
             .await
             .context("failed to migrate the database")?;
-        Ok(Self(pool))
+        Ok(Self(Mutex::new(connection)))
     }
-}
 
-pub trait Insert<T> {
-    async fn insert(&self, item: &T) -> Result;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn insert_search_query_ok() -> Result {
-        let query = SearchQuery::from("test");
-
-        let db = Db::new(Path::new(":memory:")).await?;
-
-        db.insert(&query).await?;
-
-        // Second insert to verify conflicts:
-        db.insert(&query).await?;
-
-        Ok(())
+    pub async fn connection(&self) -> MutexGuard<SqliteConnection> {
+        self.0.lock().await
     }
 }

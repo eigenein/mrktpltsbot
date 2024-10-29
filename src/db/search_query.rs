@@ -1,6 +1,9 @@
-use anyhow::Context;
+use std::path::Path;
 
-use crate::db::{Db, Insert};
+use anyhow::Context;
+use sqlx::SqliteConnection;
+
+use crate::{db::Db, prelude::*};
 
 /// User's search query.
 pub struct SearchQuery {
@@ -22,8 +25,10 @@ impl From<&str> for SearchQuery {
     }
 }
 
-impl Insert<SearchQuery> for Db {
-    async fn insert(&self, query: &SearchQuery) -> crate::prelude::Result {
+pub struct SearchQueries<'a>(pub &'a mut SqliteConnection);
+
+impl<'a> SearchQueries<'a> {
+    pub async fn upsert(&mut self, query: &SearchQuery) -> Result {
         // SQLx does not support `u64`.
         #[expect(clippy::cast_possible_wrap)]
         let hash = query.hash as i64;
@@ -34,10 +39,26 @@ impl Insert<SearchQuery> for Db {
             hash,
             query.text
         )
-            .execute(&self.0)
+            .execute(&mut *self.0)
             .await
             .with_context(|| format!("failed to insert the search query `{}`", query.text))?;
 
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn insert_search_query_ok() -> Result {
+        let query = SearchQuery::from("test");
+        let db = Db::new(Path::new(":memory:")).await?;
+        let mut connection = db.connection().await;
+        let mut search_queries = SearchQueries(&mut connection);
+        search_queries.upsert(&query).await?;
+        search_queries.upsert(&query).await?; // verify conflicts
         Ok(())
     }
 }
