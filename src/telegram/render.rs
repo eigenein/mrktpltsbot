@@ -4,7 +4,6 @@ use std::borrow::Cow;
 
 use bon::Builder;
 use maud::{Markup, Render, html};
-use prost::Message;
 use url::Url;
 
 use crate::{
@@ -53,17 +52,6 @@ impl<'a> Render for ListingCaption<'a> {
                 (self.listing.location)
             }
         }
-    }
-}
-
-impl<'a> Render for StartCommand<'a> {
-    fn render(&self) -> Markup {
-        let url = format!(
-            "https://t.me/{}?start={}",
-            self.me,
-            base64_url::encode(&self.payload.encode_to_vec())
-        );
-        html! { a href=(url) { (self.text) } }
     }
 }
 
@@ -156,24 +144,5 @@ impl Render for Delivery {
                 Self::CollectionOrShipping => { (Self::CollectionOnly) strong { " • " } (Self::ShippingOnly) }
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::telegram::start::StartPayload;
-
-    #[test]
-    fn test_render_start_command_ok() {
-        let command = StartCommand::builder()
-            .me("mrktpltsbot")
-            .payload(StartPayload::subscribe_to(42))
-            .text("Subscribe")
-            .build();
-        assert_eq!(
-            command.render().into_string(),
-            r#"<a href="https://t.me/mrktpltsbot?start=CgkJKgAAAAAAAAA">Subscribe</a>"#,
-        );
     }
 }
