@@ -2,8 +2,8 @@
 
 use std::borrow::Cow;
 
-use bon::Builder;
-use maud::{Markup, Render, html};
+use bon::{Builder, builder};
+use maud::{Markup, PreEscaped, Render, html};
 use url::Url;
 
 use crate::{
@@ -18,41 +18,87 @@ use crate::{
         Price,
         Seller,
     },
-    telegram::start::StartCommand,
 };
 
+/// Just `<strong> • </strong>`.
+pub const DELIMITER: PreEscaped<&'static str> = PreEscaped(
+    // language=html
+    "<strong> • </strong>",
+);
+
 #[derive(Builder)]
-pub struct ListingCaption<'a> {
-    search_query: SearchQuery,
-    listing: &'a Listing,
-    commands: &'a [StartCommand<'a>],
+pub struct Link<M> {
+    markup: M,
+    url: Url,
 }
 
-impl<'a> Render for ListingCaption<'a> {
+impl<M: Render> Render for Link<M> {
+    fn render(&self) -> Markup {
+        html! { a href=(self.url) { (self.markup) } }
+    }
+}
+
+#[derive(Builder)]
+pub struct SimpleNotification<M> {
+    markup: Markup,
+    links: Vec<Link<M>>,
+}
+
+impl<M: Render> Render for SimpleNotification<M> {
     fn render(&self) -> Markup {
         html! {
-            strong { a href=(self.listing.https_url()) { (self.listing.title) } }
-            "\n"
-            em { (self.search_query.text) }
-            @for command in self.commands {
-                strong { " • " }
-                (command)
-            }
-            "\n\n"
-            (self.listing.price)
-            @for attribute in &self.listing.attributes {
-                (attribute)
-            }
-            "\n\n"
-            blockquote expandable { (self.listing.description()) }
-            "\n\n"
-            (self.listing.seller)
-            @if self.listing.location.city_name.is_some() {
-                strong { " • " }
-                (self.listing.location)
+            (self.markup)
+            @for link in &self.links {
+                (DELIMITER)
+                (link)
             }
         }
     }
+}
+
+/// Render a simple message with links.
+#[builder(finish_fn = render)]
+pub fn simple_message<M: Render>(markup: M, links: &[Link<M>]) -> String {
+    let markup = html! {
+        (markup)
+        @for links in links {
+            (DELIMITER)
+            (links)
+        }
+    };
+    markup.render().into_string()
+}
+
+/// Render the listing description.
+#[builder(finish_fn = render)]
+pub fn listing_description<M: Render>(
+    listing: &Listing,
+    search_query: &SearchQuery,
+    links: &[Link<M>],
+) -> String {
+    let markup = html! {
+        strong { a href=(listing.https_url()) { (listing.title) } }
+        "\n"
+        em { (search_query.text) }
+        @for links in links {
+            (DELIMITER)
+            (links)
+        }
+        "\n\n"
+        (listing.price)
+        @for attribute in &listing.attributes {
+            (attribute)
+        }
+        "\n\n"
+        blockquote expandable { (listing.description()) }
+        "\n\n"
+        (listing.seller)
+        @if listing.location.city_name.is_some() {
+            (DELIMITER)
+            (listing.location)
+        }
+    };
+    markup.render().into_string()
 }
 
 impl Render for Price {
@@ -61,7 +107,7 @@ impl Render for Price {
             @match self {
                 Self::Fixed { asking } => { strong { (Euro::from(*asking)) } }
                 Self::OnRequest => { "❔ price on request" }
-                Self::MinBid { asking } => { strong { (Euro::from(*asking)) } strong { " • " } "⬇️ bidding" }
+                Self::MinBid { asking } => { strong { (Euro::from(*asking)) } (DELIMITER) "⬇️ bidding" }
                 Self::SeeDescription => { }
                 Self::ToBeAgreed => { "🤝 price to be agreed" }
                 Self::Reserved => { "⚠️ reserved" }
@@ -113,8 +159,8 @@ impl Render for Attribute {
     fn render(&self) -> Markup {
         html! {
             @match self {
-                Self::Condition(condition) => { strong { " • " } (condition) },
-                Self::Delivery(delivery) => { strong { " • " } (delivery) },
+                Self::Condition(condition) => { (DELIMITER) (condition) },
+                Self::Delivery(delivery) => { (DELIMITER) (delivery) },
                 Self::Other(_) => {},
             }
         }
@@ -141,7 +187,7 @@ impl Render for Delivery {
             @match self {
                 Self::CollectionOnly => "🚶 collection",
                 Self::ShippingOnly => "📦 shipping",
-                Self::CollectionOrShipping => { (Self::CollectionOnly) strong { " • " } (Self::ShippingOnly) }
+                Self::CollectionOrShipping => { (Self::CollectionOnly) (DELIMITER) (Self::ShippingOnly) }
             }
         }
     }

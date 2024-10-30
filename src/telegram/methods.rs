@@ -20,6 +20,7 @@ pub trait Method: Serialize {
         Client::DEFAULT_TIMEOUT
     }
 
+    /// Call the method on the specified Telegram connection.
     async fn call_on(&self, telegram: &Telegram) -> Result<Self::Response> {
         telegram.call(self).await
     }

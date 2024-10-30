@@ -129,6 +129,14 @@ pub struct LinkPreviewOptions {
     pub show_above_text: Option<bool>,
 }
 
+impl LinkPreviewOptions {
+    pub const DISABLED: Self = Self {
+        is_disabled: Some(true),
+        url: None,
+        show_above_text: None,
+    };
+}
+
 /// Describes [reply parameters][1] for the message that is being sent.
 ///
 /// [1]: https://core.telegram.org/bots/api#replyparameters

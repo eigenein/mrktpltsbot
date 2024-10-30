@@ -46,7 +46,7 @@ impl<'a> SendNotification<'a> {
                     .chat_id(chat_id)
                     .text(caption)
                     .parse_mode(ParseMode::Html)
-                    .link_preview_options(LinkPreviewOptions::builder().is_disabled(true).build())
+                    .link_preview_options(LinkPreviewOptions::DISABLED)
                     .maybe_reply_parameters(reply_parameters)
                     .build(),
             ),
