@@ -46,7 +46,7 @@ pub fn unauthorized(chat_id: &ChatId) -> Markup {
 
 /// Render a simple message with links.
 #[builder(finish_fn = render)]
-pub fn simple_message<M: Render>(markup: M, links: &[Link<M>]) -> String {
+pub fn simple_message<M1: Render, M2: Render>(markup: M1, links: &[Link<M2>]) -> String {
     let markup = html! {
         (markup)
         @for links in links {

@@ -9,7 +9,9 @@ use maud::Render;
 use crate::{
     db::{
         Db,
+        query_hash::QueryHash,
         search_query::{SearchQueries, SearchQuery},
+        subscription::{Subscription, Subscriptions},
     },
     marktplaats::{Marktplaats, SearchRequest},
     prelude::*,
@@ -18,23 +20,15 @@ use crate::{
         commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
         methods::{AllowedUpdate, GetMe, GetUpdates, Method, SendMessage, SetMyDescription},
         notification::SendNotification,
-        objects::{
-            Chat,
-            ChatId,
-            LinkPreviewOptions,
-            ParseMode,
-            ReplyParameters,
-            Update,
-            UpdatePayload,
-        },
+        objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters, Update, UpdatePayload},
         render,
-        render::unauthorized,
+        render::{simple_message, unauthorized},
     },
 };
 
 pub struct Bot {
     telegram: Telegram,
-    authorized_chat_ids: HashSet<ChatId>,
+    authorized_chat_ids: HashSet<i64>,
     db: Db,
     marktplaats: Marktplaats,
     poll_timeout_secs: u64,
@@ -48,7 +42,7 @@ impl Bot {
     pub async fn new(
         telegram: Telegram,
         db: Db,
-        authorized_chat_ids: HashSet<ChatId>,
+        authorized_chat_ids: HashSet<i64>,
         marktplaats: Marktplaats,
         poll_timeout_secs: u64,
         offset: u64,
@@ -96,28 +90,30 @@ impl Bot {
 
             for update in updates {
                 self.offset.store(update.id + 1, Ordering::Relaxed);
-                if let Err(error) = self.on_update(&update).await {
-                    error!("Failed to handle the update #{}: {error:#}", update.id);
+                let update_id = update.id;
+                if let Err(error) = self.on_update(update).await {
+                    error!("Failed to handle the update #{update_id}: {error:#}");
                 }
             }
         }
     }
 
     #[instrument(skip_all, err(level = Level::DEBUG))]
-    async fn on_update(&self, update: &Update) -> Result {
-        let UpdatePayload::Message(message) = &update.payload else {
+    async fn on_update(&self, update: Update) -> Result {
+        let UpdatePayload::Message(message) = update.payload else {
             bail!("The bot should only receive message updates")
         };
-        let (Some(chat), Some(text)) = (&message.chat, &message.text) else {
+        let (Some(chat), Some(text)) = (message.chat, message.text) else {
             bail!("Message without an associated chat or text");
         };
+        let text = text.trim();
         info!(update.id, ?chat.id, text, "Received");
 
         let reply_parameters = ReplyParameters::builder()
             .message_id(message.id)
             .allow_sending_without_reply(true)
             .build();
-        self.on_message(chat, text, reply_parameters).await?; // TODO: inspect errors to user.
+        self.on_message(chat.id, text, reply_parameters).await?; // TODO: inspect errors to user.
 
         info!(update.id, "Done");
         Ok(())
@@ -126,25 +122,31 @@ impl Bot {
     #[instrument(skip_all)]
     async fn on_message(
         &self,
-        chat: &Chat,
+        chat_id: ChatId,
         text: &str,
         reply_parameters: ReplyParameters,
     ) -> Result {
-        if !self.authorized_chat_ids.contains(&chat.id) {
-            warn!(?chat.id, "Unauthorized");
-            let _ = SendMessage::builder()
-                .chat_id(&chat.id)
-                .text(unauthorized(&chat.id).render().into_string())
-                .parse_mode(ParseMode::Html)
-                .link_preview_options(LinkPreviewOptions::DISABLED)
-                .build()
-                .call_on(&self.telegram)
-                .await?;
-            Ok(())
-        } else if text.starts_with('/') {
-            self.handle_command(text, &chat.id, reply_parameters).await
+        let chat_id = match chat_id {
+            ChatId::Integer(chat_id) if self.authorized_chat_ids.contains(&chat_id) => chat_id,
+            _ => {
+                // TODO: support username chat IDs.
+                warn!(?chat_id, "Unauthorized");
+                let _ = SendMessage::builder()
+                    .chat_id(&chat_id)
+                    .text(unauthorized(&chat_id).render().into_string())
+                    .parse_mode(ParseMode::Html)
+                    .link_preview_options(LinkPreviewOptions::DISABLED)
+                    .build()
+                    .call_on(&self.telegram)
+                    .await?;
+                return Ok(());
+            }
+        };
+        if text.starts_with('/') {
+            self.handle_command(text, chat_id, reply_parameters).await
         } else {
-            self.on_search(text, &chat.id, reply_parameters).await
+            self.on_search(text.to_lowercase(), chat_id, reply_parameters)
+                .await
         }
     }
 
@@ -154,15 +156,19 @@ impl Bot {
     #[instrument(skip_all)]
     async fn on_search(
         &self,
-        query: &str,
-        chat_id: &ChatId,
+        query: String,
+        chat_id: i64,
         reply_parameters: ReplyParameters,
     ) -> Result {
-        let request = SearchRequest::standard(query, 1);
-        let mut listings = self.marktplaats.search(&request).await?;
-        info!(query, n_listings = listings.inner.len());
-
         let query = SearchQuery::from(query);
+        let request = SearchRequest::standard(&query.text, 1);
+        let mut listings = self.marktplaats.search(&request).await?;
+        info!(
+            text = query.text,
+            hash = query.hash.0,
+            n_listings = listings.inner.len()
+        );
+
         SearchQueries(&mut *self.db.connection().await)
             .upsert(&query)
             .await?;
@@ -185,7 +191,7 @@ impl Bot {
                 .links(&[subscribe_link])
                 .render();
             SendNotification::builder()
-                .chat_id(chat_id)
+                .chat_id(&chat_id.into())
                 .caption(&description)
                 .pictures(&listing.pictures)
                 .reply_parameters(reply_parameters)
@@ -194,11 +200,11 @@ impl Bot {
                 .await?;
         } else {
             let text = render::simple_message()
-                .markup("There are no items matching the search query")
+                .markup("There are no items matching the search query. Try a different query or subscribe anyway to wait for them to appear")
                 .links(&[subscribe_link])
                 .render();
             let _ = SendMessage::builder()
-                .chat_id(chat_id)
+                .chat_id(&chat_id.into())
                 .text(text)
                 .parse_mode(ParseMode::Html)
                 .reply_parameters(reply_parameters)
@@ -215,9 +221,77 @@ impl Bot {
     async fn handle_command(
         &self,
         text: &str,
-        chat_id: &ChatId,
+        chat_id: i64,
         reply_parameters: ReplyParameters,
     ) -> Result {
+        if text == "/start" {
+            // Just an initial greeting.
+            let _ = SendMessage::builder()
+                .chat_id(&chat_id.into())
+                .text("👋")
+                .build()
+                .call_on(&self.telegram)
+                .await?;
+            let _ = SendMessage::builder()
+                .chat_id(&chat_id.into())
+                .text("Just send me a search query to start")
+                .build()
+                .call_on(&self.telegram)
+                .await?;
+        } else if let Some(payload) = text.strip_prefix("/start ") {
+            // Command with a payload.
+            let command = CommandPayload::from_base64(payload)?;
+            debug!(?command, "Received command");
+
+            if let Some(subscribe) = command.subscribe {
+                // Subscribe to the search query.
+                info!(chat_id, subscribe.query_hash, "Unsubscribe");
+                let query_hash = QueryHash(subscribe.query_hash);
+                let subscription = Subscription {
+                    query_hash,
+                    chat_id,
+                };
+                Subscriptions(&mut *self.db.connection().await)
+                    .upsert(&subscription)
+                    .await?;
+                let unsubscribe_link = self
+                    .command_builder
+                    .link()
+                    .content("Unsubscribe")
+                    .payload(
+                        &CommandPayload::builder()
+                            .unsubscribe(SubscriptionStartCommand::new(query_hash))
+                            .build(),
+                    )
+                    .build();
+                let text = simple_message()
+                    .markup("✅ You are now subscribed")
+                    .links(&[unsubscribe_link])
+                    .render();
+                let _ = SendMessage::builder()
+                    .chat_id(&chat_id.into())
+                    .text(text)
+                    .parse_mode(ParseMode::Html)
+                    .link_preview_options(LinkPreviewOptions::DISABLED)
+                    .build()
+                    .call_on(&self.telegram)
+                    .await?;
+            }
+
+            if let Some(unsubscribe) = command.unsubscribe {
+                // Unsubscribe from the search query.
+                // TODO
+            }
+        } else {
+            // Unknown command.
+            let _ = SendMessage::builder()
+                .chat_id(&chat_id.into())
+                .text("I am sorry, but I do not know this command")
+                .reply_parameters(reply_parameters)
+                .build()
+                .call_on(&self.telegram)
+                .await?;
+        }
         Ok(())
     }
 }

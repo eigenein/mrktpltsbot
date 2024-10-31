@@ -10,7 +10,7 @@ pub struct Subscription {
     pub chat_id: i64,
 }
 
-pub struct Subscriptions<'a>(&'a mut SqliteConnection);
+pub struct Subscriptions<'a>(pub &'a mut SqliteConnection);
 
 impl<'a> Subscriptions<'a> {
     pub async fn upsert(&mut self, subscription: &Subscription) -> Result {
@@ -51,7 +51,7 @@ mod tests {
         let db = Db::new(Path::new(":memory:")).await?;
         let mut connection = db.connection().await;
 
-        let query = SearchQuery::from("test");
+        let query = SearchQuery::from("test".to_string());
         let subscription = Subscription {
             query_hash: query.hash,
             chat_id: 42,

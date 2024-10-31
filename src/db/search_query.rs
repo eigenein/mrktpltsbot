@@ -15,9 +15,8 @@ pub struct SearchQuery {
     pub hash: QueryHash,
 }
 
-impl From<&str> for SearchQuery {
-    fn from(text: &str) -> Self {
-        let text = text.trim().to_lowercase();
+impl From<String> for SearchQuery {
+    fn from(text: String) -> Self {
         Self {
             hash: QueryHash::from(text.as_str()),
             text,
@@ -53,7 +52,7 @@ mod tests {
         let mut connection = db.connection().await;
         let mut search_queries = SearchQueries(&mut connection);
 
-        let query = SearchQuery::from("test");
+        let query = SearchQuery::from("test".to_string());
         search_queries.upsert(&query).await?;
         search_queries.upsert(&query).await?; // verify conflicts
 

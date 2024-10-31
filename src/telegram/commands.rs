@@ -25,7 +25,7 @@ impl CommandBuilder {
     pub fn link<C: Render>(&self, content: C, payload: &CommandPayload) -> Link<C> {
         let mut url = self.0.clone();
         url.query_pairs_mut()
-            .append_pair("start", &base64_url::encode(&payload.encode_to_vec()));
+            .append_pair("start", &payload.to_base64());
         Link::builder().content(content).url(url).build()
     }
 }
@@ -42,7 +42,18 @@ pub struct CommandPayload {
     pub unsubscribe: Option<SubscriptionStartCommand>,
 }
 
-#[derive(Message)]
+impl CommandPayload {
+    pub fn from_base64(text: &str) -> Result<Self> {
+        let payload = base64_url::decode(text).context("failed to decode the payload")?;
+        Self::decode(payload.as_slice()).context("failed to deserialize the payload")
+    }
+
+    pub fn to_base64(&self) -> String {
+        base64_url::encode(&self.encode_to_vec())
+    }
+}
+
+#[derive(Eq, PartialEq, Message)]
 pub struct SubscriptionStartCommand {
     #[prost(tag = "1", fixed64)]
     pub query_hash: u64,
@@ -61,10 +72,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_start_command_ok() -> Result {
+    fn test_build_subscribe_link_ok() -> Result {
         let builder = CommandBuilder::new("mrktpltsbot")?;
         let command = CommandPayload::builder()
-            .subscribe(SubscriptionStartCommand::new(QueryHash(42)))
+            .subscribe(SubscriptionStartCommand::new(QueryHash(
+                17_108_638_805_232_950_527,
+            )))
             .build();
         let link = builder
             .link()
@@ -75,9 +88,21 @@ mod tests {
         // language=html
         assert_eq!(
             link.render().into_string(),
-            r#"<a href="https://t.me/mrktpltsbot?start=CgkJKgAAAAAAAAA">Subscribe</a>"#,
+            r#"<a href="https://t.me/mrktpltsbot?start=CgkJ_5xfEFkYbu0">Subscribe</a>"#,
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_deserialize_payload_ok() -> Result {
+        let payload = CommandPayload::from_base64("CgkJ_5xfEFkYbu0")?;
+        assert_eq!(
+            payload.subscribe,
+            Some(SubscriptionStartCommand {
+                query_hash: 17_108_638_805_232_950_527
+            })
+        );
         Ok(())
     }
 }
