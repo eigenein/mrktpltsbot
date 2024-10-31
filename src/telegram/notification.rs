@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-/// Rich HTML notification that call the correct method on-the-fly.
+/// Rich HTML notification that calls the correct method on-the-fly.
 #[derive(Serialize)]
 #[serde(untagged)]
 pub enum SendNotification<'a> {
@@ -52,6 +52,7 @@ impl<'a> SendNotification<'a> {
             ),
 
             1 => Self::Photo(
+                // We cannot send one photo as a «media group», so sending it as a «photo».
                 SendPhoto::builder()
                     .chat_id(chat_id)
                     .photo(image_urls[0])

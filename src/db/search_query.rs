@@ -1,25 +1,25 @@
 use std::path::Path;
 
 use anyhow::Context;
-use sqlx::SqliteConnection;
+use sqlx::{FromRow, SqliteConnection};
 
-use crate::{db::Db, prelude::*};
+use crate::{
+    db::{Db, query_hash::QueryHash},
+    prelude::*,
+};
 
 /// User's search query.
+#[derive(FromRow)]
 pub struct SearchQuery {
     pub text: String,
-
-    /// SeaHash-ed text.
-    ///
-    /// Used instead of the text where the payload size is limited.
-    pub hash: u64,
+    pub hash: QueryHash,
 }
 
 impl From<&str> for SearchQuery {
     fn from(text: &str) -> Self {
         let text = text.trim().to_lowercase();
         Self {
-            hash: seahash::hash(text.as_bytes()),
+            hash: QueryHash::from(text.as_str()),
             text,
         }
     }
@@ -29,19 +29,15 @@ pub struct SearchQueries<'a>(pub &'a mut SqliteConnection);
 
 impl<'a> SearchQueries<'a> {
     pub async fn upsert(&mut self, query: &SearchQuery) -> Result {
-        // SQLx does not support `u64`.
-        #[expect(clippy::cast_possible_wrap)]
-        let hash = query.hash as i64;
-
-        sqlx::query!(
+        sqlx::query(
             // language=sqlite
             "INSERT INTO search_queries (hash, text) VALUES (?1, ?2) ON CONFLICT DO UPDATE SET text = ?2",
-            hash,
-            query.text
         )
+            .bind(query.hash)
+            .bind(&query.text)
             .execute(&mut *self.0)
             .await
-            .with_context(|| format!("failed to insert the search query `{}`", query.text))?;
+            .with_context(|| format!("failed to upsert the search query `{}`", query.text))?;
 
         Ok(())
     }
@@ -52,13 +48,15 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn insert_search_query_ok() -> Result {
-        let query = SearchQuery::from("test");
+    async fn upsert_search_query_ok() -> Result {
         let db = Db::new(Path::new(":memory:")).await?;
         let mut connection = db.connection().await;
         let mut search_queries = SearchQueries(&mut connection);
+
+        let query = SearchQuery::from("test");
         search_queries.upsert(&query).await?;
         search_queries.upsert(&query).await?; // verify conflicts
+
         Ok(())
     }
 }

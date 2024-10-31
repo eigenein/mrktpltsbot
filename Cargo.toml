@@ -1,21 +1,19 @@
 [package]
 name = "mrktpltsbot"
 authors = ["Pavel Perestoronin <eigenein@gmail.com>"]
-description = "Marktplaats search notifications in Telegram (Unofficial)"
-edition = "2018"
+description = "Marktplaats search notifications in Telegram (unofficial)"
+edition = "2021"
 keywords = ["marktplaats"]
 license = "MIT"
 publish = true
 readme = "README.md"
 repository = "https://github.com/eigenein/mrktpltsbot"
 version = "2.0.0"
+rust-version = "1.82"
 
 [badges]
 is-it-maintained-issue-resolution = { repository = "eigenein/mrktpltsbot" }
 is-it-maintained-open-issues = { repository = "eigenein/mrktpltsbot" }
-
-[profile.dev]
-split-debuginfo = "unpacked"
 
 [profile.release]
 codegen-units = 1
@@ -40,26 +38,29 @@ module_name_repetitions = "allow"
 significant_drop_tightening = "allow"
 
 [dependencies]
-anyhow = { version = "1.0.90", features = ["backtrace"] }
+anyhow = { version = "1.0.91", features = ["backtrace"] }
 backoff = { version = "0.4.0" }
 base64-url = "3.0.0"
 bon = "2.3.0"
 clap = { version = "4.5.20", features = ["cargo", "derive", "env"] }
 dotenvy = "0.15.7"
+futures = { version = "0.3.31", default-features = false }
 maud = "0.26.0"
 monostate = "0.1.13"
-reqwest = { version = "0.12.8", default-features = false, features = ["gzip", "http2", "json", "rustls-tls"] }
+reqwest = { version = "0.12.9", default-features = false, features = ["gzip", "http2", "json", "rustls-tls"] }
 prost = "0.13.3"
 rust_decimal = "1.36.0"
 rust_decimal_macros = "1.36.0"
 seahash = "4.1.0"
+secrecy = "0.10.3"
 sentry = { version = "0.34.0", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "rustls", "tracing"] }
-serde = "1.0.210"
-serde_json = "1.0.131"
+serde = "1.0.214"
+serde_json = "1.0.132"
 serde_qs = "0.13.0"
 sqlx = { version = "0.8.2", features = ["migrate", "runtime-tokio", "sqlite"] }
-thiserror = "1.0.64"
-tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
+sqlx-sqlite = "0.8.2"
+thiserror = "1.0.65"
+tokio = { version = "1.41.0", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

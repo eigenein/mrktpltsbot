@@ -9,6 +9,7 @@ pub mod result;
 use std::{fmt::Debug, time::Duration};
 
 use backoff::{ExponentialBackoff, backoff::Backoff};
+use secrecy::{SecretBox, SecretString};
 use serde::de::DeserializeOwned;
 use tokio::time::sleep;
 use url::Url;
@@ -19,15 +20,16 @@ use crate::{
     telegram::{error::TelegramError, methods::Method, result::TelegramResult},
 };
 
+/// Telegram bot API connection.
 #[must_use]
 pub struct Telegram {
     client: Client,
-    token: String,
+    token: SecretString,
     root_url: Url,
 }
 
 impl Telegram {
-    pub fn new(client: Client, token: String) -> Result<Self> {
+    pub fn new(client: Client, token: SecretString) -> Result<Self> {
         Ok(Self {
             client,
             token,

@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use bon::Builder;
+use bon::bon;
 
 use crate::{
     db::{
@@ -19,29 +19,48 @@ use crate::{
     },
 };
 
-#[derive(Builder)] // TODO: async fallible builder that fetches `me` right away.
 pub struct Bot {
     telegram: Telegram,
     db: Db,
     marktplaats: Marktplaats,
     poll_timeout_secs: u64,
-
-    #[builder(default = AtomicU64::new(0))]
     offset: AtomicU64,
+    command_builder: CommandBuilder,
 }
 
+#[bon]
 impl Bot {
-    pub async fn run_telegram(&self) -> Result {
-        let me = self
-            .telegram
+    #[builder(finish_fn = try_connect)]
+    pub async fn new(
+        telegram: Telegram,
+        db: Db,
+        marktplaats: Marktplaats,
+        poll_timeout_secs: u64,
+        offset: u64,
+    ) -> Result<Self> {
+        let me = telegram
             .call(&GetMe)
             .await
             .context("failed to get bot’s user")?
             .username
             .context("the bot has no username")?;
+        info!(me, "Successfully connected to Telegram Bot API");
         let command_builder = CommandBuilder::new(&me)?;
+        let this = Self {
+            telegram,
+            db,
+            marktplaats,
+            poll_timeout_secs,
+            offset: AtomicU64::new(offset),
+            command_builder,
+        };
+        Ok(this)
+    }
+}
 
-        info!(me, "Running Telegram bot…");
+impl Bot {
+    pub async fn run_telegram(&self) -> Result {
+        info!("Running Telegram bot…");
         loop {
             let updates = GetUpdates::builder()
                 .offset(self.offset.load(Ordering::Relaxed))
@@ -54,7 +73,7 @@ impl Bot {
 
             for update in updates {
                 self.offset.store(update.id + 1, Ordering::Relaxed);
-                if let Err(error) = self.on_update(&command_builder, &update).await {
+                if let Err(error) = self.on_update(&update).await {
                     error!("Failed to handle the update #{}: {error:#}", update.id);
                 }
             }
@@ -62,7 +81,7 @@ impl Bot {
     }
 
     #[instrument(skip_all, err(level = Level::DEBUG))]
-    async fn on_update(&self, command_builder: &CommandBuilder, update: &Update) -> Result {
+    async fn on_update(&self, update: &Update) -> Result {
         let UpdatePayload::Message(message) = &update.payload else {
             bail!("The bot should only receive message updates")
         };
@@ -75,8 +94,7 @@ impl Bot {
             .message_id(message.id)
             .allow_sending_without_reply(true)
             .build();
-        self.on_message(command_builder, chat, text, reply_parameters)
-            .await?; // TODO: inspect errors to user.
+        self.on_message(chat, text, reply_parameters).await?; // TODO: inspect errors to user.
 
         info!(update.id, "Done");
         Ok(())
@@ -85,7 +103,6 @@ impl Bot {
     #[instrument(skip_all)]
     async fn on_message(
         &self,
-        command_builder: &CommandBuilder,
         chat: &Chat,
         text: &str,
         reply_parameters: ReplyParameters,
@@ -93,8 +110,7 @@ impl Bot {
         if text.starts_with('/') {
             self.handle_command(text, chat.id, reply_parameters).await
         } else {
-            self.on_search(command_builder, text, chat.id, reply_parameters)
-                .await
+            self.on_search(text, chat.id, reply_parameters).await
         }
     }
 
@@ -104,7 +120,6 @@ impl Bot {
     #[instrument(skip_all)]
     async fn on_search(
         &self,
-        command_builder: &CommandBuilder,
         query: &str,
         chat_id: i64,
         reply_parameters: ReplyParameters,
@@ -120,7 +135,7 @@ impl Bot {
 
         // We need the subscribe command anyway, even if no listings were found.
         let command_payload = CommandPayload::subscribe_to(query.hash);
-        let command_builder = command_builder.command().payload(&command_payload);
+        let command_builder = self.command_builder.command().payload(&command_payload);
 
         if let Some(listing) = listings.inner.pop() {
             let description = render::listing_description()
@@ -138,7 +153,7 @@ impl Bot {
                 .await?;
         } else {
             let text = render::simple_message()
-                .markup("There is no item matching the search query")
+                .markup("There are no items matching the search query")
                 .links(&[command_builder.markup("Subscribe anyway").build()])
                 .render();
             let _ = SendMessage::builder()

@@ -1,3 +1,4 @@
+pub mod query_hash;
 pub mod search_query;
 pub mod subscription;
 

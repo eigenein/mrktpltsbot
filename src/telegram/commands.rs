@@ -5,7 +5,7 @@ use maud::Render;
 use prost::Message;
 use url::Url;
 
-use crate::{prelude::*, telegram::render::Link};
+use crate::{db::query_hash::QueryHash, prelude::*, telegram::render::Link};
 
 /// Builder of `/start` commands with [deep linking][1].
 ///
@@ -43,17 +43,21 @@ pub struct CommandPayload {
 }
 
 impl CommandPayload {
-    pub const fn subscribe_to(query_hash: u64) -> Self {
+    pub const fn subscribe_to(query_hash: QueryHash) -> Self {
         Self {
-            subscribe: Some(SubscriptionStartCommand { query_hash }),
+            subscribe: Some(SubscriptionStartCommand {
+                query_hash: query_hash.0,
+            }),
             unsubscribe: None,
         }
     }
 
-    pub const fn unsubscribe_from(query_hash: u64) -> Self {
+    pub const fn unsubscribe_from(query_hash: QueryHash) -> Self {
         Self {
             subscribe: None,
-            unsubscribe: Some(SubscriptionStartCommand { query_hash }),
+            unsubscribe: Some(SubscriptionStartCommand {
+                query_hash: query_hash.0,
+            }),
         }
     }
 }
@@ -74,7 +78,7 @@ mod tests {
         let link = builder
             .command()
             .markup("Subscribe")
-            .payload(&CommandPayload::subscribe_to(42))
+            .payload(&CommandPayload::subscribe_to(QueryHash(42)))
             .build();
 
         // language=html

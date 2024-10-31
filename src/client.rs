@@ -58,16 +58,29 @@ impl RequestBuilder {
             .map(Self)
     }
 
+    /// Send a JSON body.
     pub fn json<R: Serialize + ?Sized>(self, json: &R) -> Self {
         Self(self.0.json(json))
     }
 
+    /// Override the request timeout.
     pub fn timeout(self, timeout: Duration) -> Self {
         Self(self.0.timeout(timeout))
     }
 
+    #[instrument(skip_all, err(level = Level::DEBUG))]
+    pub async fn read_json<R: DeserializeOwned>(self, error_for_status: bool) -> Result<R> {
+        let body = self.read_text(error_for_status).await?;
+        serde_json::from_str(&body).with_context(|| {
+            format!(
+                "failed to deserialize the response into `{}`",
+                type_name::<R>()
+            )
+        })
+    }
+
     #[instrument(skip_all, ret(level = Level::DEBUG), err(level = Level::DEBUG))]
-    pub async fn read_text(self, error_for_status: bool) -> Result<String> {
+    async fn read_text(self, error_for_status: bool) -> Result<String> {
         let response = self.0.send().await.context("failed to send the request")?;
         let status = response.status();
         trace!(url = ?response.url(), ?status, "Reading response…");
@@ -81,15 +94,5 @@ impl RequestBuilder {
         } else {
             Ok(body)
         }
-    }
-
-    pub async fn read_json<R: DeserializeOwned>(self, error_for_status: bool) -> Result<R> {
-        let body = self.read_text(error_for_status).await?;
-        serde_json::from_str(&body).with_context(|| {
-            format!(
-                "failed to deserialize the response into `{}`",
-                type_name::<R>()
-            )
-        })
     }
 }
