@@ -18,9 +18,13 @@ pub struct Cli {
     #[clap(long, env = "DB", default_value = "mrktpltsbot.sqlite3")]
     pub db: PathBuf,
 
-    /// Timeout in seconds for long polling.
-    #[clap(long = "timeout", env = "TIMEOUT", default_value = "60")]
+    /// Timeout  for long polling, in seconds.
+    #[clap(long, env = "TIMEOUT_SECS", default_value = "60")]
     pub timeout_secs: u64,
+
+    /// Crawling interval, in seconds.
+    #[clap(long, env = "CRAWL_INTERVAL_SECS", default_value = "60")]
+    pub crawl_interval_secs: u64,
 
     /// Authorize chat ID to use the bot.
     #[clap(long = "authorize-chat-id", alias = "chat-id")]

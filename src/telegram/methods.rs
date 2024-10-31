@@ -135,6 +135,18 @@ impl Method for SendMessage<'_> {
     }
 }
 
+impl<'a> SendMessage<'a> {
+    /// Quick HTML-formatted message without a link preview.
+    pub fn quick_html(chat_id: &'a ChatId, text: Cow<'a, str>) -> Self {
+        Self::builder()
+            .chat_id(chat_id)
+            .text(text)
+            .parse_mode(ParseMode::Html)
+            .link_preview_options(LinkPreviewOptions::DISABLED)
+            .build()
+    }
+}
+
 /// [Send a photo][1].
 ///
 /// [1]: https://core.telegram.org/bots/api#sendphoto

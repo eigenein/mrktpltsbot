@@ -27,8 +27,22 @@ impl<'a> Subscriptions<'a> {
         Ok(())
     }
 
+    pub async fn delete(&mut self, subscription: &Subscription) -> Result {
+        sqlx::query(
+            // language=sqlite
+            "DELETE FROM subscriptions WHERE query_hash = ?1 AND chat_id = ?2",
+        )
+        .bind(subscription.query_hash)
+        .bind(subscription.chat_id)
+        .execute(&mut *self.0)
+        .await
+        .context("failed to delete the subscription")?;
+
+        Ok(())
+    }
+
     /// Get all subscriptions from all users.
-    pub fn all(&'a mut self) -> impl Stream<Item = Result<Subscription>> + 'a {
+    pub fn all(&mut self) -> impl Stream<Item = Result<Subscription>> + '_ {
         // language=sqlite
         sqlx::query_as("SELECT * FROM subscriptions")
             .fetch(&mut *self.0)
@@ -39,6 +53,8 @@ impl<'a> Subscriptions<'a> {
 #[cfg(test)]
 mod tests {
     use std::path::Path;
+
+    use futures::StreamExt;
 
     use super::*;
     use crate::db::{
@@ -52,22 +68,23 @@ mod tests {
         let mut connection = db.connection().await;
 
         let query = SearchQuery::from("test".to_string());
+        SearchQueries(&mut connection).upsert(&query).await?;
+
+        let mut subscriptions = Subscriptions(&mut connection);
         let subscription = Subscription {
             query_hash: query.hash,
             chat_id: 42,
         };
 
-        SearchQueries(&mut connection).upsert(&query).await?;
+        subscriptions.upsert(&subscription).await?;
+        subscriptions.upsert(&subscription).await?; // verify conflicts
+        let all: Vec<_> = subscriptions.all().try_collect().await?;
 
-        let subscriptions: Vec<_> = {
-            let mut subscriptions = Subscriptions(&mut connection);
-            subscriptions.upsert(&subscription).await?;
-            subscriptions.upsert(&subscription).await?; // verify conflicts
-            subscriptions.all().try_collect().await?
-        };
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0], subscription);
 
-        assert_eq!(subscriptions.len(), 1);
-        assert_eq!(subscriptions[0], subscription);
+        subscriptions.delete(&subscription).await?;
+        assert!(subscriptions.all().collect::<Vec<_>>().await.is_empty());
 
         Ok(())
     }

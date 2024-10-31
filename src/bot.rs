@@ -5,6 +5,7 @@ use std::{
 
 use bon::bon;
 use maud::Render;
+use tokio::try_join;
 
 use crate::{
     db::{
@@ -76,7 +77,13 @@ impl Bot {
 }
 
 impl Bot {
-    pub async fn run_telegram(&self) -> Result {
+    /// Run the bot indefinitely.
+    pub async fn try_run(self) -> Result {
+        try_join!(self.try_run_telegram())?;
+        Ok(())
+    }
+
+    async fn try_run_telegram(&self) -> Result {
         info!("Running Telegram bot…");
         loop {
             let updates = GetUpdates::builder()
@@ -113,7 +120,15 @@ impl Bot {
             .message_id(message.id)
             .allow_sending_without_reply(true)
             .build();
-        self.on_message(chat.id, text, reply_parameters).await?; // TODO: inspect errors to user.
+        if let Err(error) = self.on_message(&chat.id, text, reply_parameters).await {
+            let _ = SendMessage::builder()
+                .chat_id(&chat.id)
+                .text("💔 An internal error occurred and has been logged")
+                .build()
+                .call_on(&self.telegram)
+                .await;
+            bail!(error);
+        }
 
         info!(update.id, "Done");
         Ok(())
@@ -122,21 +137,17 @@ impl Bot {
     #[instrument(skip_all)]
     async fn on_message(
         &self,
-        chat_id: ChatId,
+        chat_id: &ChatId,
         text: &str,
         reply_parameters: ReplyParameters,
     ) -> Result {
         let chat_id = match chat_id {
-            ChatId::Integer(chat_id) if self.authorized_chat_ids.contains(&chat_id) => chat_id,
+            ChatId::Integer(chat_id) if self.authorized_chat_ids.contains(chat_id) => *chat_id,
             _ => {
                 // TODO: support username chat IDs.
                 warn!(?chat_id, "Unauthorized");
-                let _ = SendMessage::builder()
-                    .chat_id(&chat_id)
-                    .text(unauthorized(&chat_id).render().into_string())
-                    .parse_mode(ParseMode::Html)
-                    .link_preview_options(LinkPreviewOptions::DISABLED)
-                    .build()
+                let text = unauthorized(chat_id).render().into_string().into();
+                let _ = SendMessage::quick_html(chat_id, text)
                     .call_on(&self.telegram)
                     .await?;
                 return Ok(());
@@ -245,7 +256,7 @@ impl Bot {
 
             if let Some(subscribe) = command.subscribe {
                 // Subscribe to the search query.
-                info!(chat_id, subscribe.query_hash, "Unsubscribe");
+                info!(chat_id, subscribe.query_hash, "Subscribing");
                 let query_hash = QueryHash(subscribe.query_hash);
                 let subscription = Subscription {
                     query_hash,
@@ -268,19 +279,39 @@ impl Bot {
                     .markup("✅ You are now subscribed")
                     .links(&[unsubscribe_link])
                     .render();
-                let _ = SendMessage::builder()
-                    .chat_id(&chat_id.into())
-                    .text(text)
-                    .parse_mode(ParseMode::Html)
-                    .link_preview_options(LinkPreviewOptions::DISABLED)
-                    .build()
+                let _ = SendMessage::quick_html(&chat_id.into(), text.into())
                     .call_on(&self.telegram)
                     .await?;
             }
 
             if let Some(unsubscribe) = command.unsubscribe {
                 // Unsubscribe from the search query.
-                // TODO
+                info!(chat_id, unsubscribe.query_hash, "Unsubscribing");
+                let query_hash = QueryHash(unsubscribe.query_hash);
+                let subscription = Subscription {
+                    query_hash,
+                    chat_id,
+                };
+                Subscriptions(&mut *self.db.connection().await)
+                    .delete(&subscription)
+                    .await?;
+                let subscribe_link = self
+                    .command_builder
+                    .link()
+                    .content("Re-subscribe")
+                    .payload(
+                        &CommandPayload::builder()
+                            .subscribe(SubscriptionStartCommand::new(query_hash))
+                            .build(),
+                    )
+                    .build();
+                let text = simple_message()
+                    .markup("✅ You are now unsubscribed")
+                    .links(&[subscribe_link])
+                    .render();
+                let _ = SendMessage::quick_html(&chat_id.into(), text.into())
+                    .call_on(&self.telegram)
+                    .await?;
             }
         } else {
             // Unknown command.

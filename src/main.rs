@@ -45,7 +45,7 @@ async fn async_main(cli: Cli) -> Result {
         .offset(0)
         .try_connect()
         .await?
-        .run_telegram()
+        .try_run()
         .await
         .context("fatal error")
 }
