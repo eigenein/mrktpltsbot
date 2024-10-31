@@ -9,7 +9,7 @@ pub mod result;
 use std::{fmt::Debug, time::Duration};
 
 use backoff::{ExponentialBackoff, backoff::Backoff};
-use secrecy::{SecretBox, SecretString};
+use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use tokio::time::sleep;
 use url::Url;
@@ -45,7 +45,11 @@ impl Telegram {
         R::Response: Debug + DeserializeOwned,
     {
         let mut url = self.root_url.clone();
-        url.set_path(&format!("bot{}/{}", self.token, request.name()));
+        url.set_path(&format!(
+            "bot{}/{}",
+            self.token.expose_secret(),
+            request.name()
+        ));
 
         let request_builder = self
             .client
