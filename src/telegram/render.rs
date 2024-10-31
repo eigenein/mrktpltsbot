@@ -18,6 +18,7 @@ use crate::{
         Price,
         Seller,
     },
+    telegram::objects::ChatId,
 };
 
 /// Just `<strong> • </strong>`.
@@ -26,33 +27,20 @@ pub const DELIMITER: PreEscaped<&'static str> = PreEscaped(
     "<strong> • </strong>",
 );
 
-#[derive(Builder)]
-pub struct Link<M> {
-    markup: M,
-    url: Url,
-}
-
-impl<M: Render> Render for Link<M> {
-    fn render(&self) -> Markup {
-        html! { a href=(self.url) { (self.markup) } }
-    }
-}
-
-#[derive(Builder)]
-pub struct SimpleNotification<M> {
-    markup: Markup,
-    links: Vec<Link<M>>,
-}
-
-impl<M: Render> Render for SimpleNotification<M> {
-    fn render(&self) -> Markup {
-        html! {
-            (self.markup)
-            @for link in &self.links {
-                (DELIMITER)
-                (link)
-            }
-        }
+pub fn unauthorized(chat_id: &ChatId) -> Markup {
+    html! {
+        "👋 Thank you for your interest"
+        "\n\n"
+        "This bot cannot handle many users, so it is private and only intended for authorized users."
+        "\n\n"
+        "However, " strong { "its " a href="https://github.com/eigenein/mrktpltsbot" { "source code" } " is open" } ","
+        " and you are free to deploy your own instance."
+        "\n\n"
+        "If you are already setting it up for yourself, or someone is setting it up for you,"
+        " "
+        strong { "the following ID should be added to the list of authorized chat IDs:" }
+        "\n\n"
+        pre { code { (chat_id) } }
     }
 }
 
@@ -99,6 +87,29 @@ pub fn listing_description<M: Render>(
         }
     };
     markup.render().into_string()
+}
+
+#[derive(Builder)]
+pub struct Link<C> {
+    content: C,
+    url: Url,
+}
+
+impl<C: Render> Render for Link<C> {
+    fn render(&self) -> Markup {
+        html! { a href=(self.url) { (self.content) } }
+    }
+}
+
+impl Render for ChatId {
+    fn render(&self) -> Markup {
+        html! {
+            @match self {
+                Self::Integer(chat_id) => code { (chat_id) },
+                Self::Username(username) => code { (username) },
+            }
+        }
+    }
 }
 
 impl Render for Price {

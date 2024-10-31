@@ -31,7 +31,7 @@ impl<'a> SendNotification<'a> {
     pub fn new(
         caption: &'a str,
         pictures: &'a [Picture],
-        chat_id: ChatId,
+        chat_id: &'a ChatId,
         reply_parameters: Option<ReplyParameters>,
     ) -> Self {
         let mut image_urls: VecDeque<&str> = pictures

@@ -1,6 +1,6 @@
 //! `/start` command.
 
-use bon::bon;
+use bon::{Builder, bon};
 use maud::Render;
 use prost::Message;
 use url::Url;
@@ -20,20 +20,20 @@ impl CommandBuilder {
         Ok(Self(base_url))
     }
 
-    /// Build a new command.
+    /// Build a new command link.
     #[builder(finish_fn = build)]
-    pub fn command<M: Render>(&self, markup: M, payload: &CommandPayload) -> Link<M> {
+    pub fn link<C: Render>(&self, content: C, payload: &CommandPayload) -> Link<C> {
         let mut url = self.0.clone();
         url.query_pairs_mut()
             .append_pair("start", &base64_url::encode(&payload.encode_to_vec()));
-        Link::builder().markup(markup).url(url).build()
+        Link::builder().content(content).url(url).build()
     }
 }
 
 /// Payload for a `/start` command with a [deep link][1].
 ///
 /// [1]: https://core.telegram.org/bots/features#deep-linking
-#[derive(Message)]
+#[derive(Builder, Message)]
 pub struct CommandPayload {
     #[prost(tag = "1", message, optional)]
     pub subscribe: Option<SubscriptionStartCommand>,
@@ -42,30 +42,18 @@ pub struct CommandPayload {
     pub unsubscribe: Option<SubscriptionStartCommand>,
 }
 
-impl CommandPayload {
-    pub const fn subscribe_to(query_hash: QueryHash) -> Self {
-        Self {
-            subscribe: Some(SubscriptionStartCommand {
-                query_hash: query_hash.0,
-            }),
-            unsubscribe: None,
-        }
-    }
-
-    pub const fn unsubscribe_from(query_hash: QueryHash) -> Self {
-        Self {
-            subscribe: None,
-            unsubscribe: Some(SubscriptionStartCommand {
-                query_hash: query_hash.0,
-            }),
-        }
-    }
-}
-
 #[derive(Message)]
 pub struct SubscriptionStartCommand {
     #[prost(tag = "1", fixed64)]
     pub query_hash: u64,
+}
+
+impl SubscriptionStartCommand {
+    pub const fn new(query_hash: QueryHash) -> Self {
+        Self {
+            query_hash: query_hash.0,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -75,10 +63,13 @@ mod tests {
     #[test]
     fn test_start_command_ok() -> Result {
         let builder = CommandBuilder::new("mrktpltsbot")?;
+        let command = CommandPayload::builder()
+            .subscribe(SubscriptionStartCommand::new(QueryHash(42)))
+            .build();
         let link = builder
-            .command()
-            .markup("Subscribe")
-            .payload(&CommandPayload::subscribe_to(QueryHash(42)))
+            .link()
+            .content("Subscribe")
+            .payload(&command)
             .build();
 
         // language=html

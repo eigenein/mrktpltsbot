@@ -1,6 +1,10 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    collections::HashSet,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use bon::bon;
+use maud::Render;
 
 use crate::{
     db::{
@@ -11,16 +15,26 @@ use crate::{
     prelude::*,
     telegram::{
         Telegram,
-        commands::{CommandBuilder, CommandPayload},
-        methods::{AllowedUpdate, GetMe, GetUpdates, Method, SendMessage},
+        commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
+        methods::{AllowedUpdate, GetMe, GetUpdates, Method, SendMessage, SetMyDescription},
         notification::SendNotification,
-        objects::{Chat, LinkPreviewOptions, ParseMode, ReplyParameters, Update, UpdatePayload},
+        objects::{
+            Chat,
+            ChatId,
+            LinkPreviewOptions,
+            ParseMode,
+            ReplyParameters,
+            Update,
+            UpdatePayload,
+        },
         render,
+        render::unauthorized,
     },
 };
 
 pub struct Bot {
     telegram: Telegram,
+    authorized_chat_ids: HashSet<ChatId>,
     db: Db,
     marktplaats: Marktplaats,
     poll_timeout_secs: u64,
@@ -34,25 +48,34 @@ impl Bot {
     pub async fn new(
         telegram: Telegram,
         db: Db,
+        authorized_chat_ids: HashSet<ChatId>,
         marktplaats: Marktplaats,
         poll_timeout_secs: u64,
         offset: u64,
     ) -> Result<Self> {
-        let me = telegram
-            .call(&GetMe)
+        let me = GetMe
+            .call_on(&telegram)
             .await
             .context("failed to get bot’s user")?
             .username
             .context("the bot has no username")?;
         info!(me, "Successfully connected to Telegram Bot API");
-        let command_builder = CommandBuilder::new(&me)?;
+
+        SetMyDescription::builder()
+            .description("👋 This is a private bot for Marktplaats\n\nFeel free to set up your own instance from https://github.com/eigenein/mrktpltsbot")
+            .build()
+            .call_on(&telegram)
+            .await
+            .context("failed to set the bot description")?;
+
         let this = Self {
             telegram,
             db,
             marktplaats,
             poll_timeout_secs,
+            authorized_chat_ids,
             offset: AtomicU64::new(offset),
-            command_builder,
+            command_builder: CommandBuilder::new(&me)?,
         };
         Ok(this)
     }
@@ -88,7 +111,7 @@ impl Bot {
         let (Some(chat), Some(text)) = (&message.chat, &message.text) else {
             bail!("Message without an associated chat or text");
         };
-        info!(update.id, chat.id, text, "Received");
+        info!(update.id, ?chat.id, text, "Received");
 
         let reply_parameters = ReplyParameters::builder()
             .message_id(message.id)
@@ -107,10 +130,21 @@ impl Bot {
         text: &str,
         reply_parameters: ReplyParameters,
     ) -> Result {
-        if text.starts_with('/') {
-            self.handle_command(text, chat.id, reply_parameters).await
+        if !self.authorized_chat_ids.contains(&chat.id) {
+            warn!(?chat.id, "Unauthorized");
+            let _ = SendMessage::builder()
+                .chat_id(&chat.id)
+                .text(unauthorized(&chat.id).render().into_string())
+                .parse_mode(ParseMode::Html)
+                .link_preview_options(LinkPreviewOptions::DISABLED)
+                .build()
+                .call_on(&self.telegram)
+                .await?;
+            Ok(())
+        } else if text.starts_with('/') {
+            self.handle_command(text, &chat.id, reply_parameters).await
         } else {
-            self.on_search(text, chat.id, reply_parameters).await
+            self.on_search(text, &chat.id, reply_parameters).await
         }
     }
 
@@ -121,7 +155,7 @@ impl Bot {
     async fn on_search(
         &self,
         query: &str,
-        chat_id: i64,
+        chat_id: &ChatId,
         reply_parameters: ReplyParameters,
     ) -> Result {
         let request = SearchRequest::standard(query, 1);
@@ -134,17 +168,24 @@ impl Bot {
             .await?;
 
         // We need the subscribe command anyway, even if no listings were found.
-        let command_payload = CommandPayload::subscribe_to(query.hash);
-        let command_builder = self.command_builder.command().payload(&command_payload);
+        let command_payload = CommandPayload::builder()
+            .subscribe(SubscriptionStartCommand::new(query.hash))
+            .build();
+        let subscribe_link = self
+            .command_builder
+            .link()
+            .payload(&command_payload)
+            .content("Subscribe")
+            .build();
 
         if let Some(listing) = listings.inner.pop() {
             let description = render::listing_description()
                 .listing(&listing)
                 .search_query(&query)
-                .links(&[command_builder.markup("Subscribe").build()])
+                .links(&[subscribe_link])
                 .render();
             SendNotification::builder()
-                .chat_id(chat_id.into())
+                .chat_id(chat_id)
                 .caption(&description)
                 .pictures(&listing.pictures)
                 .reply_parameters(reply_parameters)
@@ -154,7 +195,7 @@ impl Bot {
         } else {
             let text = render::simple_message()
                 .markup("There are no items matching the search query")
-                .links(&[command_builder.markup("Subscribe anyway").build()])
+                .links(&[subscribe_link])
                 .render();
             let _ = SendMessage::builder()
                 .chat_id(chat_id)
@@ -174,7 +215,7 @@ impl Bot {
     async fn handle_command(
         &self,
         text: &str,
-        chat_id: i64,
+        chat_id: &ChatId,
         reply_parameters: ReplyParameters,
     ) -> Result {
         Ok(())

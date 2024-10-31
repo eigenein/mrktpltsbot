@@ -21,4 +21,8 @@ pub struct Cli {
     /// Timeout in seconds for long polling.
     #[clap(long = "timeout", env = "TIMEOUT", default_value = "60")]
     pub timeout_secs: u64,
+
+    /// Authorize chat ID to use the bot.
+    #[clap(long = "authorize-chat-id", alias = "chat-id")]
+    pub authorized_chat_ids: Vec<i64>,
 }

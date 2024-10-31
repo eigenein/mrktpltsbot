@@ -7,7 +7,7 @@ use crate::{
     db::Db,
     marktplaats::Marktplaats,
     prelude::*,
-    telegram::Telegram,
+    telegram::{Telegram, objects::ChatId},
 };
 
 mod bot;
@@ -35,9 +35,14 @@ async fn async_main(cli: Cli) -> Result {
     let client = Client::new()?;
     let marktplaats = Marktplaats(client.clone());
     let telegram = Telegram::new(client, cli.bot_token.into())?;
-
+    let authorized_chat_ids = cli
+        .authorized_chat_ids
+        .iter()
+        .map(|chat_id| ChatId::Integer(*chat_id))
+        .collect();
     Bot::builder()
         .telegram(telegram)
+        .authorized_chat_ids(authorized_chat_ids)
         .marktplaats(marktplaats)
         .db(db)
         .poll_timeout_secs(cli.timeout_secs)

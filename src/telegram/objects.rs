@@ -41,12 +41,11 @@ pub enum UpdatePayload {
     Other,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 #[must_use]
 pub enum ChatId {
     Integer(i64),
-
     Username(String),
 }
 
@@ -91,10 +90,10 @@ pub struct MessageEntity {
     pub custom_emoji_id: Option<String>,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[must_use]
 pub struct Chat {
-    pub id: i64,
+    pub id: ChatId,
 }
 
 #[derive(Serialize)]

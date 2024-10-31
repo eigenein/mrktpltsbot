@@ -41,6 +41,26 @@ impl Method for GetMe {
     }
 }
 
+/// Use this method to change the bot's [description][1],
+/// which is shown in the chat with the bot if the chat is empty.
+///
+/// [1]: https://core.telegram.org/bots/api#setmydescription
+#[derive(Builder, Serialize)]
+pub struct SetMyDescription<'a> {
+    /// New bot description; 0-512 characters.
+    /// Pass an empty string to remove the dedicated description for the given language.
+    #[builder(into)]
+    pub description: Option<Cow<'a, str>>,
+}
+
+impl<'a> Method for SetMyDescription<'a> {
+    type Response = bool;
+
+    fn name(&self) -> &'static str {
+        "setMyDescription"
+    }
+}
+
 /// [Update][1] types that the client wants to listen to.
 ///
 /// [1]: https://core.telegram.org/bots/api#update
@@ -92,8 +112,7 @@ impl<'a> Method for GetUpdates<'a> {
 #[derive(Builder, Serialize)]
 #[must_use]
 pub struct SendMessage<'a> {
-    #[builder(into)]
-    pub chat_id: ChatId,
+    pub chat_id: &'a ChatId,
 
     #[builder(into)]
     pub text: Cow<'a, str>,
@@ -122,7 +141,7 @@ impl Method for SendMessage<'_> {
 #[derive(Builder, Serialize)]
 #[must_use]
 pub struct SendPhoto<'a> {
-    pub chat_id: ChatId,
+    pub chat_id: &'a ChatId,
 
     #[builder(into)]
     pub photo: Cow<'a, str>,
@@ -155,7 +174,7 @@ impl Method for SendPhoto<'_> {
 #[derive(Builder, Serialize)]
 #[must_use]
 pub struct SendMediaGroup<'a> {
-    pub chat_id: ChatId,
+    pub chat_id: &'a ChatId,
 
     /// A JSON-serialized array describing messages to be sent, must include 2-10 items.
     #[serde(serialize_with = "as_inner_json")]
