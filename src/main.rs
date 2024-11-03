@@ -37,12 +37,13 @@ async fn async_main(cli: Cli) -> Result {
     let telegram = Telegram::new(client, cli.bot_token.into())?;
     let authorized_chat_ids = cli.authorized_chat_ids.into_iter().collect();
     Bot::builder()
-        .telegram(telegram)
-        .authorized_chat_ids(authorized_chat_ids)
-        .marktplaats(marktplaats)
         .db(db)
-        .poll_timeout_secs(cli.timeout_secs)
+        .marktplaats(marktplaats)
+        .crawl_interval_secs(cli.crawl_interval_secs)
+        .telegram(telegram)
         .offset(0)
+        .telegram_poll_timeout_secs(cli.telegram_poll_timeout_secs)
+        .authorized_chat_ids(authorized_chat_ids)
         .try_connect()
         .await?
         .try_run()

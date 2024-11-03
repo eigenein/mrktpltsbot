@@ -18,9 +18,9 @@ pub struct Cli {
     #[clap(long, env = "DB", default_value = "mrktpltsbot.sqlite3")]
     pub db: PathBuf,
 
-    /// Timeout  for long polling, in seconds.
-    #[clap(long, env = "TIMEOUT_SECS", default_value = "60")]
-    pub timeout_secs: u64,
+    /// Timeout for Telegram long polling, in seconds.
+    #[clap(long, env = "TELEGRAM_POLL_TIMEOUT_SECS", default_value = "60")]
+    pub telegram_poll_timeout_secs: u64,
 
     /// Crawling interval, in seconds.
     #[clap(long, env = "CRAWL_INTERVAL_SECS", default_value = "60")]

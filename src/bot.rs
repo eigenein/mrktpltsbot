@@ -1,11 +1,12 @@
 use std::{
     collections::HashSet,
     sync::atomic::{AtomicU64, Ordering},
+    time::Duration,
 };
 
 use bon::bon;
 use maud::Render;
-use tokio::try_join;
+use tokio::{time::sleep, try_join};
 
 use crate::{
     db::{
@@ -34,12 +35,16 @@ use crate::{
 };
 
 pub struct Bot {
-    telegram: Telegram,
-    authorized_chat_ids: HashSet<i64>,
     db: Db,
+
     marktplaats: Marktplaats,
-    poll_timeout_secs: u64,
+    crawl_interval: Duration,
+
+    telegram: Telegram,
     offset: AtomicU64,
+    telegram_poll_timeout_secs: u64,
+    authorized_chat_ids: HashSet<i64>,
+
     command_builder: CommandBuilder,
 }
 
@@ -47,12 +52,13 @@ pub struct Bot {
 impl Bot {
     #[builder(finish_fn = try_connect)]
     pub async fn new(
-        telegram: Telegram,
         db: Db,
-        authorized_chat_ids: HashSet<i64>,
         marktplaats: Marktplaats,
-        poll_timeout_secs: u64,
+        crawl_interval_secs: u64,
+        telegram: Telegram,
         offset: u64,
+        telegram_poll_timeout_secs: u64,
+        authorized_chat_ids: HashSet<i64>,
     ) -> Result<Self> {
         let me = GetMe
             .call_on(&telegram)
@@ -60,22 +66,20 @@ impl Bot {
             .context("failed to get bot’s user")?
             .username
             .context("the bot has no username")?;
-        info!(me, "Successfully connected to Telegram Bot API");
-
         SetMyDescription::builder()
             .description("👋 This is a private bot for Marktplaats\n\nFeel free to set up your own instance from https://github.com/eigenein/mrktpltsbot")
             .build()
             .call_on(&telegram)
             .await
             .context("failed to set the bot description")?;
-
         let this = Self {
-            telegram,
             db,
             marktplaats,
-            poll_timeout_secs,
-            authorized_chat_ids,
+            crawl_interval: Duration::from_secs(crawl_interval_secs),
+            telegram,
             offset: AtomicU64::new(offset),
+            telegram_poll_timeout_secs,
+            authorized_chat_ids,
             command_builder: CommandBuilder::new(&me)?,
         };
         Ok(this)
@@ -85,8 +89,15 @@ impl Bot {
 impl Bot {
     /// Run the bot indefinitely.
     pub async fn try_run(self) -> Result {
-        try_join!(self.try_run_telegram())?;
+        try_join!(self.try_run_telegram(), self.try_run_crawler())?;
         Ok(())
+    }
+
+    async fn try_run_crawler(&self) -> Result {
+        info!("Running crawler…");
+        loop {
+            sleep(self.crawl_interval).await;
+        }
     }
 
     async fn try_run_telegram(&self) -> Result {
@@ -94,7 +105,7 @@ impl Bot {
         loop {
             let updates = GetUpdates::builder()
                 .offset(self.offset.load(Ordering::Relaxed))
-                .timeout_secs(self.poll_timeout_secs)
+                .timeout_secs(self.telegram_poll_timeout_secs)
                 .allowed_updates(&[AllowedUpdate::Message])
                 .build()
                 .call_on(&self.telegram)
