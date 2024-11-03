@@ -19,11 +19,17 @@ use crate::{
     telegram::{
         Telegram,
         commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
-        methods::{AllowedUpdate, GetMe, GetUpdates, Method, SendMessage, SetMyDescription},
-        notification::SendNotification,
+        methods::{
+            AllowedUpdate,
+            GetMe,
+            GetUpdates,
+            Method,
+            SendMessage,
+            SendNotification,
+            SetMyDescription,
+        },
         objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters, Update, UpdatePayload},
         render,
-        render::{simple_message, unauthorized},
     },
 };
 
@@ -146,7 +152,7 @@ impl Bot {
             _ => {
                 // TODO: support username chat IDs.
                 warn!(?chat_id, "Unauthorized");
-                let text = unauthorized(chat_id).render().into_string().into();
+                let text = render::unauthorized(chat_id).render().into_string().into();
                 let _ = SendMessage::quick_html(chat_id, text)
                     .call_on(&self.telegram)
                     .await?;
@@ -206,6 +212,7 @@ impl Bot {
                 .caption(&description)
                 .pictures(&listing.pictures)
                 .reply_parameters(reply_parameters)
+                .parse_mode(ParseMode::Html)
                 .build()
                 .call_on(&self.telegram)
                 .await?;
@@ -275,7 +282,7 @@ impl Bot {
                             .build(),
                     )
                     .build();
-                let text = simple_message()
+                let text = render::simple_message()
                     .markup("✅ You are now subscribed")
                     .links(&[unsubscribe_link])
                     .render();
@@ -305,7 +312,7 @@ impl Bot {
                             .build(),
                     )
                     .build();
-                let text = simple_message()
+                let text = render::simple_message()
                     .markup("✅ You are now unsubscribed")
                     .links(&[subscribe_link])
                     .render();

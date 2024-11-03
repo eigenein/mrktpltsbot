@@ -65,29 +65,30 @@ pub struct Message {
     pub id: u64,
 
     #[serde(default)]
-    #[expect(dead_code)]
-    pub from: Option<User>,
-
-    #[serde(default)]
     pub text: Option<String>,
 
     #[serde(default)]
     pub chat: Option<Chat>,
-
-    #[serde(default)]
-    #[expect(dead_code)]
-    pub entities: Vec<MessageEntity>,
 }
 
-/// This object represents one [special entity][1] in a text message.
+/// «Umbrella» for methods that may return exactly one [`Message`] or multiple messages.
 ///
-/// [1]: https://core.telegram.org/bots/api#messageentity
+/// For example, [`crate::telegram::methods::SendMessage`] and [`crate::telegram::methods::SendPhoto`]
+/// return exactly one message, but [`crate::telegram::methods::SendMediaGroup`] returns multiple messages.
 #[derive(Debug, Deserialize)]
-#[must_use]
-pub struct MessageEntity {
-    #[serde(default)]
-    #[expect(dead_code)]
-    pub custom_emoji_id: Option<String>,
+#[serde(untagged)]
+pub enum Messages {
+    Single(Message),
+    Multiple(Vec<Message>),
+}
+
+impl Messages {
+    pub fn first(&self) -> Option<&Message> {
+        match self {
+            Self::Single(message) => Some(message),
+            Self::Multiple(messages) => messages.first(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]

@@ -1,10 +1,11 @@
-use std::{borrow::Cow, fmt::Debug, time::Duration};
+use std::{borrow::Cow, collections::VecDeque, fmt::Debug, iter::once, time::Duration};
 
-use bon::{Builder, builder};
+use bon::{Builder, bon, builder};
 use serde::{Serialize, de::DeserializeOwned};
 
 use crate::{
     client::Client,
+    marktplaats::listing::Picture,
     prelude::*,
     serde::as_inner_json,
     telegram::{Telegram, objects::*},
@@ -227,4 +228,95 @@ pub struct InputMediaPhoto<'a> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show_caption_above_media: Option<bool>,
+}
+
+/// «Umbrella» for several messaging methods.
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum SendNotification<'a> {
+    /// Plain-text notification.
+    Message(SendMessage<'a>),
+
+    /// Single-photo notification.
+    Photo(SendPhoto<'a>),
+
+    /// Multiple-photo notification.
+    MediaGroup(SendMediaGroup<'a>),
+}
+
+#[bon]
+impl<'a> SendNotification<'a> {
+    /// Build a new method based on the provided content.
+    #[builder]
+    pub fn new(
+        chat_id: &'a ChatId,
+        caption: &'a str,
+        parse_mode: ParseMode,
+        pictures: &'a [Picture],
+        reply_parameters: Option<ReplyParameters>,
+    ) -> Self {
+        let mut image_urls: VecDeque<&str> = pictures
+            .iter()
+            .filter_map(|picture| picture.any_url())
+            .collect();
+
+        // Specific representation depends on how many pictures there are.
+        match image_urls.len() {
+            0 => Self::Message(
+                SendMessage::builder()
+                    .chat_id(chat_id)
+                    .text(caption)
+                    .parse_mode(parse_mode)
+                    .link_preview_options(LinkPreviewOptions::DISABLED)
+                    .maybe_reply_parameters(reply_parameters)
+                    .build(),
+            ),
+
+            1 => Self::Photo(
+                // We cannot send one photo as a «media group», so sending it as a «photo».
+                SendPhoto::builder()
+                    .chat_id(chat_id)
+                    .photo(image_urls[0])
+                    .caption(caption)
+                    .parse_mode(parse_mode)
+                    .maybe_reply_parameters(reply_parameters)
+                    .build(),
+            ),
+
+            _ => {
+                let first_media = Media::InputMediaPhoto(
+                    // Telegram needs the description in the first photo's caption.
+                    InputMediaPhoto::builder()
+                        .media(image_urls.pop_front().unwrap())
+                        .caption(caption)
+                        .parse_mode(parse_mode)
+                        .build(),
+                );
+                let other_media = image_urls
+                    .into_iter()
+                    .map(|url| InputMediaPhoto::builder().media(url).build())
+                    .map(Media::InputMediaPhoto);
+                let media = once(first_media).chain(other_media).collect();
+                Self::MediaGroup(
+                    SendMediaGroup::builder()
+                        .chat_id(chat_id)
+                        .media(media)
+                        .maybe_reply_parameters(reply_parameters)
+                        .build(),
+                )
+            }
+        }
+    }
+}
+
+impl<'a> Method for SendNotification<'a> {
+    type Response = Messages;
+
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Message(send_message) => send_message.name(),
+            Self::Photo(send_photo) => send_photo.name(),
+            Self::MediaGroup(send_media_group) => send_media_group.name(),
+        }
+    }
 }
