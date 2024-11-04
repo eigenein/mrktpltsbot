@@ -39,7 +39,6 @@ async fn async_main(cli: Cli) -> Result {
     Bot::builder()
         .db(db)
         .marktplaats(marktplaats)
-        .crawl_interval_secs(cli.crawl_interval_secs)
         .telegram(telegram)
         .offset(0)
         .telegram_poll_timeout_secs(cli.telegram_poll_timeout_secs)

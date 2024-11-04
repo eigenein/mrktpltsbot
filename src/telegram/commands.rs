@@ -10,6 +10,7 @@ use crate::{db::query_hash::QueryHash, prelude::*, telegram::render::Link};
 /// Builder of `/start` commands with [deep linking][1].
 ///
 /// [1]: https://core.telegram.org/bots/features#deep-linking
+#[derive(Clone)]
 pub struct CommandBuilder(Url);
 
 #[bon]

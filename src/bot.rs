@@ -1,12 +1,10 @@
 use std::{
     collections::HashSet,
     sync::atomic::{AtomicU64, Ordering},
-    time::Duration,
 };
 
 use bon::bon;
 use maud::Render;
-use tokio::{time::sleep, try_join};
 
 use crate::{
     db::{
@@ -36,9 +34,7 @@ use crate::{
 
 pub struct Bot {
     db: Db,
-
     marktplaats: Marktplaats,
-    crawl_interval: Duration,
 
     telegram: Telegram,
     offset: AtomicU64,
@@ -54,7 +50,6 @@ impl Bot {
     pub async fn new(
         db: Db,
         marktplaats: Marktplaats,
-        crawl_interval_secs: u64,
         telegram: Telegram,
         offset: u64,
         telegram_poll_timeout_secs: u64,
@@ -75,7 +70,6 @@ impl Bot {
         let this = Self {
             db,
             marktplaats,
-            crawl_interval: Duration::from_secs(crawl_interval_secs),
             telegram,
             offset: AtomicU64::new(offset),
             telegram_poll_timeout_secs,
@@ -88,19 +82,7 @@ impl Bot {
 
 impl Bot {
     /// Run the bot indefinitely.
-    pub async fn try_run(self) -> Result {
-        try_join!(self.try_run_telegram(), self.try_run_crawler())?;
-        Ok(())
-    }
-
-    async fn try_run_crawler(&self) -> Result {
-        info!("Running crawler…");
-        loop {
-            sleep(self.crawl_interval).await;
-        }
-    }
-
-    async fn try_run_telegram(&self) -> Result {
+    pub async fn try_run(&self) -> Result {
         info!("Running Telegram bot…");
         loop {
             let updates = GetUpdates::builder()
