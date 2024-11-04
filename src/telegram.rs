@@ -21,6 +21,7 @@ use crate::{
 
 /// Telegram bot API connection.
 #[must_use]
+#[derive(Clone)]
 pub struct Telegram {
     client: Client,
     token: SecretString,

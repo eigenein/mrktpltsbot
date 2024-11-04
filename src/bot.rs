@@ -1,3 +1,5 @@
+pub mod telegram;
+
 use std::{
     collections::HashSet,
     sync::atomic::{AtomicU64, Ordering},
