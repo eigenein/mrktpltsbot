@@ -1,14 +1,13 @@
 pub mod telegram;
 
-use std::{
-    collections::HashSet,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::collections::HashSet;
 
 use bon::bon;
+use futures::TryStreamExt;
 use maud::Render;
 
 use crate::{
+    bot::telegram::update_stream,
     db::{
         Db,
         query_hash::QueryHash,
@@ -20,15 +19,7 @@ use crate::{
     telegram::{
         Telegram,
         commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
-        methods::{
-            AllowedUpdate,
-            GetMe,
-            GetUpdates,
-            Method,
-            SendMessage,
-            SendNotification,
-            SetMyDescription,
-        },
+        methods::{GetMe, Method, SendMessage, SendNotification, SetMyDescription},
         objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters, Update, UpdatePayload},
         render,
     },
@@ -39,7 +30,7 @@ pub struct Bot {
     marktplaats: Marktplaats,
 
     telegram: Telegram,
-    offset: AtomicU64,
+    offset: u64,
     telegram_poll_timeout_secs: u64,
     authorized_chat_ids: HashSet<i64>,
 
@@ -73,7 +64,7 @@ impl Bot {
             db,
             marktplaats,
             telegram,
-            offset: AtomicU64::new(offset),
+            offset,
             telegram_poll_timeout_secs,
             authorized_chat_ids,
             command_builder: CommandBuilder::new(&me)?,
@@ -84,26 +75,22 @@ impl Bot {
 
 impl Bot {
     /// Run the bot indefinitely.
-    pub async fn try_run(&self) -> Result {
+    pub async fn try_run(self) -> Result {
         info!("Running Telegram bot…");
-        loop {
-            let updates = GetUpdates::builder()
-                .offset(self.offset.load(Ordering::Relaxed))
-                .timeout_secs(self.telegram_poll_timeout_secs)
-                .allowed_updates(&[AllowedUpdate::Message])
-                .build()
-                .call_on(&self.telegram)
-                .await?;
-            info!(n = updates.len(), "Received Telegram updates");
-
-            for update in updates {
-                self.offset.store(update.id + 1, Ordering::Relaxed);
+        update_stream()
+            .telegram(self.telegram.clone())
+            .offset(self.offset)
+            .poll_timeout_secs(self.telegram_poll_timeout_secs)
+            .build()
+            .try_for_each(|update| async {
                 let update_id = update.id;
                 if let Err(error) = self.on_update(update).await {
                     error!("Failed to handle the update #{update_id}: {error:#}");
                 }
-            }
-        }
+                Ok(())
+            })
+            .await
+            .context("Telegram updates loop failed")
     }
 
     #[instrument(skip_all, err(level = Level::DEBUG))]
