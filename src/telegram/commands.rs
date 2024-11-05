@@ -2,7 +2,7 @@
 
 use bon::{Builder, bon};
 use maud::Render;
-use prost::Message;
+use prost::{Enumeration, Message};
 use url::Url;
 
 use crate::{db::query_hash::QueryHash, prelude::*, telegram::render::Link};
@@ -37,11 +37,8 @@ impl CommandBuilder {
 /// [1]: https://core.telegram.org/bots/features#deep-linking
 #[derive(Builder, Message)]
 pub struct CommandPayload {
-    #[prost(tag = "1", message, optional)]
-    pub subscribe: Option<SubscriptionStartCommand>,
-
-    #[prost(tag = "2", message, optional)]
-    pub unsubscribe: Option<SubscriptionStartCommand>,
+    #[prost(tag = "3", message, optional)]
+    pub subscription: Option<SubscriptionCommand>,
 }
 
 impl CommandPayload {
@@ -56,17 +53,29 @@ impl CommandPayload {
 }
 
 #[derive(Eq, PartialEq, Message)]
-pub struct SubscriptionStartCommand {
+pub struct SubscriptionCommand {
     #[prost(tag = "1", fixed64)]
     pub query_hash: u64,
+
+    #[prost(tag = "2", enumeration = "SubscriptionAction")]
+    pub action: i32,
 }
 
-impl SubscriptionStartCommand {
-    pub const fn new(query_hash: QueryHash) -> Self {
+impl SubscriptionCommand {
+    pub const fn new(query_hash: QueryHash, action: SubscriptionAction) -> Self {
         Self {
             query_hash: query_hash.0,
+            action: action as i32,
         }
     }
+}
+
+#[derive(Debug, Enumeration)]
+#[repr(i32)]
+pub enum SubscriptionAction {
+    None = 0,
+    Subscribe = 1,
+    Unsubscribe = 2,
 }
 
 #[cfg(test)]
@@ -77,9 +86,10 @@ mod tests {
     fn test_build_subscribe_link_ok() -> Result {
         let builder = CommandBuilder::new("mrktpltsbot")?;
         let command = CommandPayload::builder()
-            .subscribe(SubscriptionStartCommand::new(QueryHash(
-                17_108_638_805_232_950_527,
-            )))
+            .subscription(SubscriptionCommand::new(
+                QueryHash(17_108_638_805_232_950_527),
+                SubscriptionAction::Subscribe,
+            ))
             .build();
         let link = builder
             .link()
@@ -90,7 +100,7 @@ mod tests {
         // language=html
         assert_eq!(
             link.render().into_string(),
-            r#"<a href="https://t.me/mrktpltsbot?start=CgkJ_5xfEFkYbu0">Subscribe</a>"#,
+            r#"<a href="https://t.me/mrktpltsbot?start=GgsJ_5xfEFkYbu0QAQ">Subscribe</a>"#,
         );
 
         Ok(())
@@ -98,12 +108,13 @@ mod tests {
 
     #[test]
     fn test_deserialize_payload_ok() -> Result {
-        let payload = CommandPayload::from_base64("CgkJ_5xfEFkYbu0")?;
+        let payload = CommandPayload::from_base64("GgsJ_5xfEFkYbu0QAQ")?;
         assert_eq!(
-            payload.subscribe,
-            Some(SubscriptionStartCommand {
-                query_hash: 17_108_638_805_232_950_527
-            })
+            payload.subscription,
+            Some(SubscriptionCommand::new(
+                QueryHash(17_108_638_805_232_950_527),
+                SubscriptionAction::Subscribe,
+            ))
         );
         Ok(())
     }

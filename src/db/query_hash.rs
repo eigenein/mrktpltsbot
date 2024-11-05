@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Display, Formatter};
+
 use sqlx::{Database, Decode, Encode, Sqlite, Type, encode::IsNull, error::BoxDynError};
 
 /// [SeaHash][1] of a search query.
@@ -7,6 +9,12 @@ use sqlx::{Database, Decode, Encode, Sqlite, Type, encode::IsNull, error::BoxDyn
 /// [1]: https://docs.rs/seahash/latest/seahash/
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct QueryHash(pub u64);
+
+impl Display for QueryHash {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
 
 impl From<&str> for QueryHash {
     /// Calculate hash from a text.

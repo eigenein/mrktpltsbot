@@ -15,7 +15,7 @@ use crate::{
     prelude::*,
     telegram::{
         Telegram,
-        commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
+        commands::{CommandBuilder, CommandPayload, SubscriptionAction, SubscriptionCommand},
         methods::{AnyMethod, GetMe, Method, SendMessage, SetMyDescription},
         objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters, Update},
         render,
@@ -130,7 +130,10 @@ impl Reactor {
 
         // We need the subscribe command anyway, even if no listings were found.
         let command_payload = CommandPayload::builder()
-            .subscribe(SubscriptionStartCommand::new(query.hash))
+            .subscription(SubscriptionCommand::new(
+                query.hash,
+                SubscriptionAction::Subscribe,
+            ))
             .build();
         let subscribe_link = self
             .command_builder
@@ -202,61 +205,70 @@ impl Reactor {
             debug!(?command, "Received command");
             let mut reactions = Vec::new();
 
-            if let Some(subscribe) = command.subscribe {
-                // Subscribe to the search query.
-                info!(chat_id, subscribe.query_hash, "Subscribing");
-                let query_hash = QueryHash(subscribe.query_hash);
+            if let Some(subscription_command) = command.subscription {
+                let query_hash = QueryHash(subscription_command.query_hash);
                 let subscription = Subscription {
                     query_hash,
                     chat_id,
                 };
-                Subscriptions(&mut *self.db.connection().await)
-                    .upsert(&subscription)
-                    .await?;
-                let unsubscribe_link = self
-                    .command_builder
-                    .link()
-                    .content("Unsubscribe")
-                    .payload(
-                        &CommandPayload::builder()
-                            .unsubscribe(SubscriptionStartCommand::new(query_hash))
-                            .build(),
-                    )
-                    .build();
-                let text = render::simple_message()
-                    .markup("✅ You are now subscribed")
-                    .links(&[unsubscribe_link])
-                    .render();
-                reactions
-                    .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into());
-            } else if let Some(unsubscribe) = command.unsubscribe {
-                // Unsubscribe from the search query.
-                info!(chat_id, unsubscribe.query_hash, "Unsubscribing");
-                let query_hash = QueryHash(unsubscribe.query_hash);
-                let subscription = Subscription {
-                    query_hash,
-                    chat_id,
-                };
-                Subscriptions(&mut *self.db.connection().await)
-                    .delete(&subscription)
-                    .await?;
-                let subscribe_link = self
-                    .command_builder
-                    .link()
-                    .content("Re-subscribe")
-                    .payload(
-                        &CommandPayload::builder()
-                            .subscribe(SubscriptionStartCommand::new(query_hash))
-                            .build(),
-                    )
-                    .build();
-                let text = render::simple_message()
-                    .markup("✅ You are now unsubscribed")
-                    .links(&[subscribe_link])
-                    .render();
-                reactions
-                    .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into());
+                let connection = &mut *self.db.connection().await;
+                let mut subscriptions = Subscriptions(connection);
+
+                match SubscriptionAction::try_from(subscription_command.action) {
+                    Ok(SubscriptionAction::Subscribe) => {
+                        info!(%query_hash, "Subscribing");
+                        subscriptions.upsert(&subscription).await?;
+                        let unsubscribe_link = self
+                            .command_builder
+                            .link()
+                            .content("Unsubscribe")
+                            .payload(
+                                &CommandPayload::builder()
+                                    .subscription(SubscriptionCommand::new(
+                                        query_hash,
+                                        SubscriptionAction::Unsubscribe,
+                                    ))
+                                    .build(),
+                            )
+                            .build();
+                        let text = render::simple_message()
+                            .markup("You are now subscribed")
+                            .links(&[unsubscribe_link])
+                            .render();
+                        reactions.push(
+                            SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into(),
+                        );
+                    }
+
+                    Ok(SubscriptionAction::Unsubscribe) => {
+                        info!(%query_hash, "Unsubscribing");
+                        subscriptions.delete(&subscription).await?;
+                        let subscribe_link = self
+                            .command_builder
+                            .link()
+                            .content("Re-subscribe")
+                            .payload(
+                                &CommandPayload::builder()
+                                    .subscription(SubscriptionCommand::new(
+                                        query_hash,
+                                        SubscriptionAction::Unsubscribe,
+                                    ))
+                                    .build(),
+                            )
+                            .build();
+                        let text = render::simple_message()
+                            .markup("You are now unsubscribed")
+                            .links(&[subscribe_link])
+                            .render();
+                        reactions.push(
+                            SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into(),
+                        );
+                    }
+
+                    _ => {}
+                }
             }
+
             return Ok(reactions);
         }
 
