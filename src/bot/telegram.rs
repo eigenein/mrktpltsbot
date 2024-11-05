@@ -182,7 +182,7 @@ impl Reactor {
         if text == "/start" {
             // Just an initial greeting.
             let chat_id: Cow<'_, ChatId> = Cow::Owned(ChatId::Integer(chat_id));
-            Ok(vec![
+            return Ok(vec![
                 SendMessage::builder()
                     .chat_id(chat_id.clone())
                     .text("👋")
@@ -193,11 +193,14 @@ impl Reactor {
                     .text("Just send me a search query to start")
                     .build()
                     .into(),
-            ])
-        } else if let Some(payload) = text.strip_prefix("/start ") {
+            ]);
+        }
+
+        if let Some(payload) = text.strip_prefix("/start ") {
             // Command with a payload.
             let command = CommandPayload::from_base64(payload)?;
             debug!(?command, "Received command");
+            let mut reactions = Vec::new();
 
             if let Some(subscribe) = command.subscribe {
                 // Subscribe to the search query.
@@ -224,9 +227,8 @@ impl Reactor {
                     .markup("✅ You are now subscribed")
                     .links(&[unsubscribe_link])
                     .render();
-                Ok(vec![
-                    SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into(),
-                ])
+                reactions
+                    .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into());
             } else if let Some(unsubscribe) = command.unsubscribe {
                 // Unsubscribe from the search query.
                 info!(chat_id, unsubscribe.query_hash, "Unsubscribing");
@@ -252,23 +254,21 @@ impl Reactor {
                     .markup("✅ You are now unsubscribed")
                     .links(&[subscribe_link])
                     .render();
-                Ok(vec![
-                    SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into(),
-                ])
-            } else {
-                Ok(Vec::new()) // FIXME: should never happen, but…
+                reactions
+                    .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into());
             }
-        } else {
-            // Unknown command.
-            Ok(vec![
-                SendMessage::builder()
-                    .chat_id(Cow::Owned(chat_id.into()))
-                    .text("I am sorry, but I do not know this command")
-                    .reply_parameters(reply_parameters)
-                    .build()
-                    .into(),
-            ])
+            return Ok(reactions);
         }
+
+        // Unknown command.
+        Ok(vec![
+            SendMessage::builder()
+                .chat_id(Cow::Owned(chat_id.into()))
+                .text("I am sorry, but I do not know this command")
+                .reply_parameters(reply_parameters)
+                .build()
+                .into(),
+        ])
     }
 }
 
