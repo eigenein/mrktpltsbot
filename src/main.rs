@@ -1,13 +1,14 @@
 use clap::Parser;
+use futures::{StreamExt, TryFutureExt, TryStreamExt, stream};
 
 use crate::{
-    bot::telegram::Bot,
+    bot::telegram::Reactor,
     cli::Cli,
     client::Client,
     db::Db,
     marktplaats::Marktplaats,
     prelude::*,
-    telegram::Telegram,
+    telegram::{Telegram, methods::Method},
 };
 
 mod bot;
@@ -31,21 +32,28 @@ fn main() -> Result {
 }
 
 async fn async_main(cli: Cli) -> Result {
-    let db = Db::new(&cli.db).await?;
     let client = Client::new()?;
-    let marktplaats = Marktplaats(client.clone());
-    let telegram = Telegram::new(client, cli.bot_token.into())?;
-    Bot::builder()
-        .db(db)
-        .marktplaats(marktplaats)
-        .telegram(telegram)
-        .offset(0)
-        .telegram_poll_timeout_secs(cli.telegram_poll_timeout_secs)
+    let telegram = Telegram::new(client.clone(), cli.bot_token.into())?;
+
+    Reactor::builder()
         .authorized_chat_ids(cli.authorized_chat_ids.into_iter().collect())
-        .try_init()
-        .await?
-        .run_forever()
-        .await
-        .context("Telegram bot failed")?;
+        .db(Db::new(&cli.db).await?)
+        .marktplaats(Marktplaats(client))
+        .command_builder(bot::telegram::try_init(&telegram).await?)
+        .build()
+        .run(
+            telegram
+                .clone()
+                .into_updates(0, cli.telegram_poll_timeout_secs),
+        )
+        .map_ok(|reactions| stream::iter(reactions).map(Ok))
+        .try_flatten()
+        .try_for_each(|reaction| {
+            let telegram = &telegram;
+            async move { reaction.call_discarded_on(telegram).await }
+        })
+        .inspect_err(|error| error!("reactor error: {error:#}"))
+        .await?;
+
     Ok(())
 }

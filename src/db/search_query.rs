@@ -3,10 +3,7 @@ use std::path::Path;
 use anyhow::Context;
 use sqlx::{FromRow, SqliteConnection};
 
-use crate::{
-    db::{Db, query_hash::QueryHash},
-    prelude::*,
-};
+use crate::{db::query_hash::QueryHash, prelude::*};
 
 /// User's search query.
 #[derive(FromRow)]
@@ -45,6 +42,7 @@ impl<'a> SearchQueries<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::Db;
 
     #[tokio::test]
     async fn upsert_search_query_ok() -> Result {

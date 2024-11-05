@@ -45,6 +45,7 @@ pub trait Method: Serialize {
 #[must_use]
 pub struct GetMe;
 
+// TODO: macro.
 impl Method for GetMe {
     type Response = User;
 
@@ -124,7 +125,7 @@ impl<'a> Method for GetUpdates<'a> {
 #[derive(Builder, Serialize)]
 #[must_use]
 pub struct SendMessage<'a> {
-    pub chat_id: &'a ChatId,
+    pub chat_id: Cow<'a, ChatId>,
 
     #[builder(into)]
     pub text: Cow<'a, str>,
@@ -149,7 +150,7 @@ impl Method for SendMessage<'_> {
 
 impl<'a> SendMessage<'a> {
     /// Quick HTML-formatted message without a link preview.
-    pub fn quick_html(chat_id: &'a ChatId, text: Cow<'a, str>) -> Self {
+    pub fn quick_html(chat_id: Cow<'a, ChatId>, text: Cow<'a, str>) -> Self {
         Self::builder()
             .chat_id(chat_id)
             .text(text)
@@ -165,7 +166,7 @@ impl<'a> SendMessage<'a> {
 #[derive(Builder, Serialize)]
 #[must_use]
 pub struct SendPhoto<'a> {
-    pub chat_id: &'a ChatId,
+    pub chat_id: Cow<'a, ChatId>,
 
     #[builder(into)]
     pub photo: Cow<'a, str>,
@@ -198,7 +199,7 @@ impl Method for SendPhoto<'_> {
 #[derive(Builder, Serialize)]
 #[must_use]
 pub struct SendMediaGroup<'a> {
-    pub chat_id: &'a ChatId,
+    pub chat_id: Cow<'a, ChatId>,
 
     /// A JSON-serialized array describing messages to be sent, must include 2-10 items.
     #[serde(serialize_with = "as_inner_json")]
@@ -250,21 +251,26 @@ pub enum AnyMethod<'a> {
     SendPhoto(SendPhoto<'a>),
 }
 
+// TODO: macro.
+impl<'a> From<SendMessage<'a>> for AnyMethod<'a> {
+    fn from(value: SendMessage<'a>) -> Self {
+        Self::SendMessage(value)
+    }
+}
+
 #[bon]
 impl<'a> AnyMethod<'a> {
     /// Build a new method from a listing contents.
     #[builder(finish_fn = build)]
     pub fn from_listing(
-        chat_id: &'a ChatId,
-        text: &'a str,
+        chat_id: Cow<'a, ChatId>,
+        #[builder(into)] text: Cow<'a, str>,
         parse_mode: ParseMode,
-        pictures: &'a [Picture],
+        #[builder(into)] pictures: Vec<Picture>,
         reply_parameters: Option<ReplyParameters>,
     ) -> Self {
-        let mut image_urls: VecDeque<&str> = pictures
-            .iter()
-            .filter_map(|picture| picture.any_url())
-            .collect();
+        let mut image_urls: VecDeque<_> =
+            pictures.into_iter().filter_map(Picture::into_url).collect();
 
         // Specific representation depends on how many pictures there are.
         match image_urls.len() {
@@ -282,7 +288,7 @@ impl<'a> AnyMethod<'a> {
                 // We cannot send one photo as a «media group», so sending it as a «photo».
                 SendPhoto::builder()
                     .chat_id(chat_id)
-                    .photo(image_urls[0])
+                    .photo(image_urls.pop_front().unwrap())
                     .caption(text)
                     .parse_mode(parse_mode)
                     .maybe_reply_parameters(reply_parameters)

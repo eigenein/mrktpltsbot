@@ -1,5 +1,7 @@
 #![expect(dead_code)]
 
+use std::fmt::{Display, Formatter};
+
 use bon::Builder;
 use serde::{Deserialize, Serialize};
 
@@ -50,12 +52,21 @@ pub enum UpdatePayload {
     Other,
 }
 
-#[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 #[must_use]
 pub enum ChatId {
     Integer(i64),
     Username(String),
+}
+
+impl Display for ChatId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Integer(chat_id) => chat_id.fmt(f),
+            Self::Username(username) => username.fmt(f),
+        }
+    }
 }
 
 impl From<i64> for ChatId {

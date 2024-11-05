@@ -139,7 +139,7 @@ impl From<Cents> for Euro {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 #[expect(clippy::struct_field_names)]
 pub struct Picture {
     #[serde(rename = "extraExtraLargeUrl", default)]
@@ -153,11 +153,9 @@ pub struct Picture {
 }
 
 impl Picture {
-    pub fn any_url(&self) -> Option<&str> {
-        self.extra_large_url
-            .as_deref()
-            .or(self.large_url.as_deref())
-            .or(self.medium_url.as_deref())
+    /// Converts the [`Picture`] into a URL, larger images take precedence.
+    pub fn into_url(self) -> Option<String> {
+        self.extra_large_url.or(self.large_url).or(self.medium_url)
     }
 }
 

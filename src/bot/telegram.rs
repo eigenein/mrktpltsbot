@@ -1,7 +1,7 @@
-use std::collections::HashSet;
+use std::{borrow::Cow, collections::HashSet};
 
-use bon::bon;
-use futures::TryStreamExt;
+use bon::Builder;
+use futures::{Stream, TryStreamExt};
 use maud::Render;
 
 use crate::{
@@ -17,66 +17,28 @@ use crate::{
         Telegram,
         commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
         methods::{AnyMethod, GetMe, Method, SendMessage, SetMyDescription},
-        objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters},
+        objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters, Update},
         render,
     },
 };
 
-pub struct Bot {
+/// Telegram [`Message`] reactor.
+#[derive(Builder)]
+pub struct Reactor {
+    authorized_chat_ids: HashSet<i64>,
     db: Db,
     marktplaats: Marktplaats,
-
-    telegram: Telegram,
-    offset: u64,
-    telegram_poll_timeout_secs: u64,
-    authorized_chat_ids: HashSet<i64>,
-
     command_builder: CommandBuilder,
 }
 
-#[bon]
-impl Bot {
-    #[builder(finish_fn = try_init)]
-    pub async fn new(
-        db: Db,
-        marktplaats: Marktplaats,
-        telegram: Telegram,
-        offset: u64,
-        telegram_poll_timeout_secs: u64,
-        authorized_chat_ids: HashSet<i64>,
-    ) -> Result<Self> {
-        let me = GetMe
-            .call_on(&telegram)
-            .await
-            .context("failed to get bot’s user")?
-            .username
-            .context("the bot has no username")?;
-        SetMyDescription::builder()
-            .description("👋 This is a private bot for Marktplaats\n\nFeel free to set up your own instance from https://github.com/eigenein/mrktpltsbot")
-            .build()
-            .call_on(&telegram)
-            .await
-            .context("failed to set the bot description")?;
-        let this = Self {
-            db,
-            marktplaats,
-            telegram,
-            offset,
-            telegram_poll_timeout_secs,
-            authorized_chat_ids,
-            command_builder: CommandBuilder::new(&me)?,
-        };
-        Ok(this)
-    }
-}
-
-impl Bot {
-    /// Run the bot till an error fails it.
-    pub async fn run_forever(self) -> Result {
-        info!("Running Telegram bot…");
-        self.telegram
-            .clone()
-            .into_updates(self.offset, self.telegram_poll_timeout_secs)
+impl Reactor {
+    /// Run the reactor indefinitely and produce reactions.
+    pub fn run<'s>(
+        &'s self,
+        updates: impl Stream<Item = Result<Update>> + 's,
+    ) -> impl Stream<Item = Result<Vec<AnyMethod<'static>>>> + 's {
+        info!("Running Telegram reactor…");
+        updates
             .inspect_ok(|update| info!(update.id, "Received update"))
             .try_filter_map(|update| async { Ok(Option::<Message>::from(update)) })
             .inspect_ok(|message| debug!(message.id, "Received message"))
@@ -97,40 +59,42 @@ impl Bot {
             .inspect_ok(|(message_id, chat_id, text)| {
                 info!(message_id, chat_id, text, "Filtered message");
             })
-            .try_for_each(|(message_id, chat_id, text)| {
-                let this = &self;
-                async move {
-                    if let Err(error) = this.on_message(chat_id, message_id, text.trim()).await {
-                        this.on_error(chat_id, message_id, error).await;
+            .and_then(move |(message_id, chat_id, text)| async move {
+                match self.on_message(chat_id, message_id, text.trim()).await {
+                    Ok(reactions) => {
+                        info!(chat_id, message_id, "Done");
+                        Ok(reactions)
                     }
-                    info!(chat_id, message_id, "Done");
-                    Ok(())
+                    Err(error) => Ok(vec![Self::on_error(chat_id.into(), message_id, &error)]),
                 }
             })
-            .await
     }
 
     /// Gracefully handle the error.
-    async fn on_error(&self, chat_id: i64, message_id: u64, error: Error) {
-        error!("Failed to handle the update #{message_id}: {error:#}");
-        let _ = SendMessage::builder()
-            .chat_id(&ChatId::Integer(chat_id))
+    #[instrument(skip_all, fields(chat_id = %chat_id, message_id = message_id))]
+    fn on_error(chat_id: ChatId, message_id: u64, error: &Error) -> AnyMethod<'static> {
+        error!("Failed to handle the message: {error:#}");
+        SendMessage::builder()
+            .chat_id(Cow::Owned(chat_id))
             .text("💥 An internal error occurred and has been logged")
             .build()
-            .call_discarded_on(&self.telegram)
-            .await;
+            .into()
     }
 
-    #[instrument(skip_all)]
-    async fn on_message(&self, chat_id: i64, message_id: u64, text: &str) -> Result {
+    #[instrument(skip_all, fields(chat_id = chat_id, message_id = message_id, text = text))]
+    async fn on_message(
+        &self,
+        chat_id: i64,
+        message_id: u64,
+        text: &str,
+    ) -> Result<Vec<AnyMethod<'static>>> {
         if !self.authorized_chat_ids.contains(&chat_id) {
-            warn!(chat_id, "Unauthorized");
+            warn!("Unauthorized");
             let chat_id = ChatId::Integer(chat_id);
             let text = render::unauthorized(&chat_id).render().into_string().into();
-            SendMessage::quick_html(&chat_id, text)
-                .call_discarded_on(&self.telegram)
-                .await?;
-            return Ok(());
+            return Ok(vec![
+                SendMessage::quick_html(Cow::Owned(chat_id), text).into(),
+            ]);
         }
 
         let reply_parameters = ReplyParameters::builder()
@@ -145,7 +109,6 @@ impl Bot {
                 .await
         }
     }
-
     /// Handle the search request from Telegram.
     ///
     /// A search request is just a message that is not a command.
@@ -155,15 +118,11 @@ impl Bot {
         query: String,
         chat_id: i64,
         reply_parameters: ReplyParameters,
-    ) -> Result {
+    ) -> Result<Vec<AnyMethod<'static>>> {
         let query = SearchQuery::from(query);
         let request = SearchRequest::standard(&query.text, 1);
         let mut listings = self.marktplaats.search(&request).await?;
-        info!(
-            text = query.text,
-            hash = query.hash.0,
-            n_listings = listings.inner.len()
-        );
+        info!(hash = query.hash.0, n_listings = listings.inner.len());
 
         SearchQueries(&mut *self.db.connection().await)
             .upsert(&query)
@@ -186,32 +145,31 @@ impl Bot {
                 .search_query(&query)
                 .links(&[subscribe_link])
                 .render();
-            AnyMethod::from_listing()
-                .chat_id(&chat_id.into())
-                .text(&description)
-                .pictures(&listing.pictures)
-                .reply_parameters(reply_parameters)
-                .parse_mode(ParseMode::Html)
-                .build()
-                .call_on(&self.telegram)
-                .await?;
+            Ok(vec![
+                AnyMethod::from_listing()
+                    .chat_id(Cow::Owned(chat_id.into()))
+                    .text(description)
+                    .pictures(listing.pictures)
+                    .reply_parameters(reply_parameters)
+                    .parse_mode(ParseMode::Html)
+                    .build(),
+            ])
         } else {
             let text = render::simple_message()
                 .markup("There are no items matching the search query. Try a different query or subscribe anyway to wait for them to appear")
                 .links(&[subscribe_link])
                 .render();
-            SendMessage::builder()
-                .chat_id(&chat_id.into())
-                .text(text)
-                .parse_mode(ParseMode::Html)
-                .reply_parameters(reply_parameters)
-                .link_preview_options(LinkPreviewOptions::DISABLED)
-                .build()
-                .call_discarded_on(&self.telegram)
-                .await?;
+            Ok(vec![
+                SendMessage::builder()
+                    .chat_id(Cow::Owned(chat_id.into()))
+                    .text(text)
+                    .parse_mode(ParseMode::Html)
+                    .reply_parameters(reply_parameters)
+                    .link_preview_options(LinkPreviewOptions::DISABLED)
+                    .build()
+                    .into(),
+            ])
         }
-
-        Ok(())
     }
 
     #[instrument(skip_all)]
@@ -220,21 +178,22 @@ impl Bot {
         text: &str,
         chat_id: i64,
         reply_parameters: ReplyParameters,
-    ) -> Result {
+    ) -> Result<Vec<AnyMethod<'static>>> {
         if text == "/start" {
             // Just an initial greeting.
-            SendMessage::builder()
-                .chat_id(&chat_id.into())
-                .text("👋")
-                .build()
-                .call_discarded_on(&self.telegram)
-                .await?;
-            SendMessage::builder()
-                .chat_id(&chat_id.into())
-                .text("Just send me a search query to start")
-                .build()
-                .call_discarded_on(&self.telegram)
-                .await?;
+            let chat_id: Cow<'_, ChatId> = Cow::Owned(ChatId::Integer(chat_id));
+            Ok(vec![
+                SendMessage::builder()
+                    .chat_id(chat_id.clone())
+                    .text("👋")
+                    .build()
+                    .into(),
+                SendMessage::builder()
+                    .chat_id(chat_id)
+                    .text("Just send me a search query to start")
+                    .build()
+                    .into(),
+            ])
         } else if let Some(payload) = text.strip_prefix("/start ") {
             // Command with a payload.
             let command = CommandPayload::from_base64(payload)?;
@@ -265,12 +224,10 @@ impl Bot {
                     .markup("✅ You are now subscribed")
                     .links(&[unsubscribe_link])
                     .render();
-                SendMessage::quick_html(&chat_id.into(), text.into())
-                    .call_discarded_on(&self.telegram)
-                    .await?;
-            }
-
-            if let Some(unsubscribe) = command.unsubscribe {
+                Ok(vec![
+                    SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into(),
+                ])
+            } else if let Some(unsubscribe) = command.unsubscribe {
                 // Unsubscribe from the search query.
                 info!(chat_id, unsubscribe.query_hash, "Unsubscribing");
                 let query_hash = QueryHash(unsubscribe.query_hash);
@@ -295,20 +252,40 @@ impl Bot {
                     .markup("✅ You are now unsubscribed")
                     .links(&[subscribe_link])
                     .render();
-                SendMessage::quick_html(&chat_id.into(), text.into())
-                    .call_discarded_on(&self.telegram)
-                    .await?;
+                Ok(vec![
+                    SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into(),
+                ])
+            } else {
+                Ok(Vec::new()) // FIXME: should never happen, but…
             }
         } else {
             // Unknown command.
-            SendMessage::builder()
-                .chat_id(&chat_id.into())
-                .text("I am sorry, but I do not know this command")
-                .reply_parameters(reply_parameters)
-                .build()
-                .call_discarded_on(&self.telegram)
-                .await?;
+            Ok(vec![
+                SendMessage::builder()
+                    .chat_id(Cow::Owned(chat_id.into()))
+                    .text("I am sorry, but I do not know this command")
+                    .reply_parameters(reply_parameters)
+                    .build()
+                    .into(),
+            ])
         }
-        Ok(())
     }
+}
+
+/// Initialize the Telegram bot.
+#[instrument(skip_all)]
+pub async fn try_init(telegram: &Telegram) -> Result<CommandBuilder> {
+    let me = GetMe
+        .call_on(telegram)
+        .await
+        .context("failed to get bot’s user")?
+        .username
+        .context("the bot has no username")?;
+    SetMyDescription::builder()
+        .description("👋 This is a private bot for Marktplaats\n\nFeel free to set up your own instance from https://github.com/eigenein/mrktpltsbot")
+        .build()
+        .call_on(telegram)
+        .await
+        .context("failed to set the bot description")?;
+    CommandBuilder::new(&me)
 }

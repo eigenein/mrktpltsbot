@@ -11,6 +11,7 @@ use crate::{db::query_hash::QueryHash, prelude::*, telegram::render::Link};
 ///
 /// [1]: https://core.telegram.org/bots/features#deep-linking
 #[derive(Clone)]
+#[must_use]
 pub struct CommandBuilder(Url);
 
 #[bon]
