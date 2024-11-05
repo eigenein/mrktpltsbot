@@ -8,6 +8,7 @@ pub mod result;
 use std::{fmt::Debug, time::Duration};
 
 use backoff::{ExponentialBackoff, backoff::Backoff};
+use futures::{Stream, StreamExt, TryStreamExt, stream};
 use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use tokio::time::sleep;
@@ -16,7 +17,12 @@ use url::Url;
 use crate::{
     client::Client,
     prelude::*,
-    telegram::{error::TelegramError, methods::Method, result::TelegramResult},
+    telegram::{
+        error::TelegramError,
+        methods::{AllowedUpdate, GetUpdates, Method},
+        objects::Update,
+        result::TelegramResult,
+    },
 };
 
 /// Telegram bot API connection.
@@ -93,5 +99,28 @@ impl Telegram {
                 break Err(error);
             }
         }
+    }
+
+    /// Convert the client into a [`Stream`] of Telegram [`Update`]'s.
+    pub fn into_updates(
+        self,
+        offset: u64,
+        poll_timeout_secs: u64,
+    ) -> impl Stream<Item = Result<Update>> {
+        let advance = move |(this, offset)| async move {
+            let updates = GetUpdates::builder()
+                .offset(offset)
+                .timeout_secs(poll_timeout_secs)
+                .allowed_updates(&[AllowedUpdate::Message])
+                .build()
+                .call_on(&this)
+                .await?;
+            let next_offset = updates
+                .last()
+                .map_or(offset, |last_update| last_update.id + 1);
+            info!(n = updates.len(), next_offset, "Received Telegram updates");
+            Ok::<_, Error>(Some((stream::iter(updates).map(Ok), (this, next_offset))))
+        };
+        stream::try_unfold((self, offset), advance).try_flatten()
     }
 }

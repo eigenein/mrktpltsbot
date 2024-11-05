@@ -77,15 +77,14 @@ impl Bot {
     /// Run the bot indefinitely.
     pub async fn run(self) {
         info!("Running Telegram bot…");
-        telegram::updates()
-            .telegram(self.telegram.clone())
-            .offset(self.offset)
-            .poll_timeout_secs(self.telegram_poll_timeout_secs)
-            .build()
+        self.telegram
+            .clone()
+            .into_updates(self.offset, self.telegram_poll_timeout_secs)
             .inspect_ok(|update| info!(update.id, "Received update"))
             .try_filter_map(|update| async { Ok(Option::<Message>::from(update)) })
             .inspect_ok(|message| info!(message.id, "Received message"))
             .try_filter_map(|message| async move {
+                // TODO: extract `filter_message`?
                 if let (Some(chat), Some(text)) = (message.chat, message.text) {
                     if let ChatId::Integer(chat_id) = chat.id {
                         Ok(Some((message.id, chat_id, text)))
