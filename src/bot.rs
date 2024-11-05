@@ -90,6 +90,7 @@ impl Bot {
                     if let ChatId::Integer(chat_id) = chat.id {
                         Ok(Some((message.id, chat_id, text)))
                     } else {
+                        warn!(message.id, "Username chat IDs are not supported");
                         Ok(None)
                     }
                 } else {
@@ -125,7 +126,7 @@ impl Bot {
             .await;
     }
 
-    #[instrument(skip_all, fields(chat_id = ?chat_id, message_id = message_id))]
+    #[instrument(skip_all, fields(chat_id = chat_id, message_id = message_id))]
     async fn on_message(&self, chat_id: i64, message_id: u64, text: &str) -> Result {
         if !self.authorized_chat_ids.contains(&chat_id) {
             warn!(chat_id, "Unauthorized");
@@ -143,7 +144,7 @@ impl Bot {
             .build();
 
         if text.starts_with('/') {
-            self.handle_command(text, chat_id, reply_parameters).await
+            self.on_command(text, chat_id, reply_parameters).await
         } else {
             self.on_search(text.to_lowercase(), chat_id, reply_parameters)
                 .await
@@ -219,7 +220,7 @@ impl Bot {
     }
 
     #[instrument(skip_all)]
-    async fn handle_command(
+    async fn on_command(
         &self,
         text: &str,
         chat_id: i64,
