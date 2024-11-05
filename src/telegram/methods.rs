@@ -243,10 +243,11 @@ pub struct InputMediaPhoto<'a> {
 
 #[derive(Serialize)]
 #[serde(untagged)]
+#[allow(clippy::enum_variant_names)]
 pub enum AnyMethod<'a> {
-    MediaGroup(SendMediaGroup<'a>),
-    Message(SendMessage<'a>),
-    Photo(SendPhoto<'a>),
+    SendMediaGroup(SendMediaGroup<'a>),
+    SendMessage(SendMessage<'a>),
+    SendPhoto(SendPhoto<'a>),
 }
 
 #[bon]
@@ -267,7 +268,7 @@ impl<'a> AnyMethod<'a> {
 
         // Specific representation depends on how many pictures there are.
         match image_urls.len() {
-            0 => Self::Message(
+            0 => Self::SendMessage(
                 SendMessage::builder()
                     .chat_id(chat_id)
                     .text(text)
@@ -277,7 +278,7 @@ impl<'a> AnyMethod<'a> {
                     .build(),
             ),
 
-            1 => Self::Photo(
+            1 => Self::SendPhoto(
                 // We cannot send one photo as a «media group», so sending it as a «photo».
                 SendPhoto::builder()
                     .chat_id(chat_id)
@@ -302,7 +303,7 @@ impl<'a> AnyMethod<'a> {
                     .map(|url| InputMediaPhoto::builder().media(url).build())
                     .map(Media::InputMediaPhoto);
                 let media = once(first_media).chain(other_media).collect();
-                Self::MediaGroup(
+                Self::SendMediaGroup(
                     SendMediaGroup::builder()
                         .chat_id(chat_id)
                         .media(media)
@@ -319,9 +320,9 @@ impl<'a> Method for AnyMethod<'a> {
 
     fn name(&self) -> &'static str {
         match self {
-            Self::MediaGroup(send_media_group) => send_media_group.name(),
-            Self::Message(send_message) => send_message.name(),
-            Self::Photo(send_photo) => send_photo.name(),
+            Self::SendMediaGroup(send_media_group) => send_media_group.name(),
+            Self::SendMessage(send_message) => send_message.name(),
+            Self::SendPhoto(send_photo) => send_photo.name(),
         }
     }
 }

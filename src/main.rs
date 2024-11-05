@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use crate::{
-    bot::Bot,
+    bot::telegram::Bot,
     cli::Cli,
     client::Client,
     db::Db,
@@ -35,17 +35,17 @@ async fn async_main(cli: Cli) -> Result {
     let client = Client::new()?;
     let marktplaats = Marktplaats(client.clone());
     let telegram = Telegram::new(client, cli.bot_token.into())?;
-    let authorized_chat_ids = cli.authorized_chat_ids.into_iter().collect();
     Bot::builder()
         .db(db)
         .marktplaats(marktplaats)
         .telegram(telegram)
         .offset(0)
         .telegram_poll_timeout_secs(cli.telegram_poll_timeout_secs)
-        .authorized_chat_ids(authorized_chat_ids)
-        .try_connect()
+        .authorized_chat_ids(cli.authorized_chat_ids.into_iter().collect())
+        .try_init()
         .await?
-        .run()
-        .await;
+        .run_forever()
+        .await
+        .context("Telegram bot failed")?;
     Ok(())
 }
