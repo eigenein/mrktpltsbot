@@ -130,10 +130,7 @@ impl Reactor {
 
         // We need the subscribe command anyway, even if no listings were found.
         let command_payload = CommandPayload::builder()
-            .subscription(SubscriptionCommand::new(
-                query.hash,
-                SubscriptionAction::Subscribe,
-            ))
+            .subscription(SubscriptionCommand::subscribe_to(query.hash))
             .build();
         let subscribe_link = self
             .command_builder
@@ -224,10 +221,7 @@ impl Reactor {
                             .content("Unsubscribe")
                             .payload(
                                 &CommandPayload::builder()
-                                    .subscription(SubscriptionCommand::new(
-                                        query_hash,
-                                        SubscriptionAction::Unsubscribe,
-                                    ))
+                                    .subscription(SubscriptionCommand::unsubscribe_from(query_hash))
                                     .build(),
                             )
                             .build();
@@ -249,10 +243,7 @@ impl Reactor {
                             .content("Re-subscribe")
                             .payload(
                                 &CommandPayload::builder()
-                                    .subscription(SubscriptionCommand::new(
-                                        query_hash,
-                                        SubscriptionAction::Unsubscribe,
-                                    ))
+                                    .subscription(SubscriptionCommand::subscribe_to(query_hash))
                                     .build(),
                             )
                             .build();

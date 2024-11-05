@@ -62,10 +62,17 @@ pub struct SubscriptionCommand {
 }
 
 impl SubscriptionCommand {
-    pub const fn new(query_hash: QueryHash, action: SubscriptionAction) -> Self {
+    pub const fn subscribe_to(query_hash: QueryHash) -> Self {
         Self {
             query_hash: query_hash.0,
-            action: action as i32,
+            action: SubscriptionAction::Subscribe as i32,
+        }
+    }
+
+    pub const fn unsubscribe_from(query_hash: QueryHash) -> Self {
+        Self {
+            query_hash: query_hash.0,
+            action: SubscriptionAction::Unsubscribe as i32,
         }
     }
 }
@@ -86,10 +93,9 @@ mod tests {
     fn test_build_subscribe_link_ok() -> Result {
         let builder = CommandBuilder::new("mrktpltsbot")?;
         let command = CommandPayload::builder()
-            .subscription(SubscriptionCommand::new(
-                QueryHash(17_108_638_805_232_950_527),
-                SubscriptionAction::Subscribe,
-            ))
+            .subscription(SubscriptionCommand::subscribe_to(QueryHash(
+                17_108_638_805_232_950_527,
+            )))
             .build();
         let link = builder
             .link()
@@ -111,10 +117,9 @@ mod tests {
         let payload = CommandPayload::from_base64("GgsJ_5xfEFkYbu0QAQ")?;
         assert_eq!(
             payload.subscription,
-            Some(SubscriptionCommand::new(
-                QueryHash(17_108_638_805_232_950_527),
-                SubscriptionAction::Subscribe,
-            ))
+            Some(SubscriptionCommand::subscribe_to(QueryHash(
+                17_108_638_805_232_950_527
+            )))
         );
         Ok(())
     }
