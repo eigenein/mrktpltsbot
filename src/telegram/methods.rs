@@ -1,7 +1,10 @@
 use std::{borrow::Cow, collections::VecDeque, fmt::Debug, iter::once, time::Duration};
 
 use bon::{Builder, bon, builder};
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{
+    Serialize,
+    de::{DeserializeOwned, IgnoredAny},
+};
 
 use crate::{
     client::Client,
@@ -11,15 +14,28 @@ use crate::{
     telegram::{Telegram, objects::*},
 };
 
-/// Telegram bot API method.
+/// [Telegram bot API][1] method.
+///
+/// [1]: https://core.telegram.org/bots/api
 pub trait Method: Serialize {
-    type Response: Debug + DeserializeOwned;
-
     fn name(&self) -> &'static str;
 
     fn timeout(&self) -> Duration {
         Client::DEFAULT_TIMEOUT
     }
+
+    /// Call the method on the specified [`Telegram`] connection and discard any **successful** response.
+    async fn call_discarded_on(&self, telegram: &Telegram) -> Result {
+        telegram.call::<_, IgnoredAny>(self).await?;
+        Ok(())
+    }
+}
+
+/// [Telegram bot API][1] method with an associated [`Self::Response`] type.
+///
+/// [1]: https://core.telegram.org/bots/api
+pub trait ResponsiveMethod: Method {
+    type Response: Debug + DeserializeOwned;
 
     /// Call the method on the specified Telegram connection.
     async fn call_on(&self, telegram: &Telegram) -> Result<Self::Response> {
@@ -35,11 +51,13 @@ pub trait Method: Serialize {
 pub struct GetMe;
 
 impl Method for GetMe {
-    type Response = User;
-
     fn name(&self) -> &'static str {
         "getMe"
     }
+}
+
+impl ResponsiveMethod for GetMe {
+    type Response = User;
 }
 
 /// Use this method to change the bot's [description][1],
@@ -55,11 +73,13 @@ pub struct SetMyDescription<'a> {
 }
 
 impl<'a> Method for SetMyDescription<'a> {
-    type Response = bool;
-
     fn name(&self) -> &'static str {
         "setMyDescription"
     }
+}
+
+impl<'a> ResponsiveMethod for SetMyDescription<'a> {
+    type Response = bool;
 }
 
 /// [Update][1] types that the client wants to listen to.
@@ -96,8 +116,6 @@ pub struct GetUpdates<'a> {
 }
 
 impl<'a> Method for GetUpdates<'a> {
-    type Response = Vec<Update>;
-
     fn name(&self) -> &'static str {
         "getUpdates"
     }
@@ -105,6 +123,10 @@ impl<'a> Method for GetUpdates<'a> {
     fn timeout(&self) -> Duration {
         Client::DEFAULT_TIMEOUT + Duration::from_secs(self.timeout_secs.unwrap_or_default())
     }
+}
+
+impl<'a> ResponsiveMethod for GetUpdates<'a> {
+    type Response = Vec<Update>;
 }
 
 /// [Send a message][1].
@@ -129,11 +151,13 @@ pub struct SendMessage<'a> {
 }
 
 impl Method for SendMessage<'_> {
-    type Response = Message;
-
     fn name(&self) -> &'static str {
         "sendMessage"
     }
+}
+
+impl ResponsiveMethod for SendMessage<'_> {
+    type Response = Message;
 }
 
 impl<'a> SendMessage<'a> {
@@ -174,11 +198,13 @@ pub struct SendPhoto<'a> {
 }
 
 impl Method for SendPhoto<'_> {
-    type Response = Message;
-
     fn name(&self) -> &'static str {
         "sendPhoto"
     }
+}
+
+impl ResponsiveMethod for SendPhoto<'_> {
+    type Response = Message;
 }
 
 /// Use this method to [send a group][1] of photos, videos, documents or audios as an album.
@@ -198,11 +224,13 @@ pub struct SendMediaGroup<'a> {
 }
 
 impl Method for SendMediaGroup<'_> {
-    type Response = Vec<Message>;
-
     fn name(&self) -> &'static str {
         "sendMediaGroup"
     }
+}
+
+impl ResponsiveMethod for SendMediaGroup<'_> {
+    type Response = Vec<Message>;
 }
 
 #[derive(Serialize)]
@@ -310,8 +338,6 @@ impl<'a> SendNotification<'a> {
 }
 
 impl<'a> Method for SendNotification<'a> {
-    type Response = Messages;
-
     fn name(&self) -> &'static str {
         match self {
             Self::Message(send_message) => send_message.name(),
@@ -319,4 +345,8 @@ impl<'a> Method for SendNotification<'a> {
             Self::MediaGroup(send_media_group) => send_media_group.name(),
         }
     }
+}
+
+impl<'a> ResponsiveMethod for SendNotification<'a> {
+    type Response = Messages;
 }

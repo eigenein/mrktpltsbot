@@ -17,3 +17,5 @@ impl<M> Reactor<M> {
     /// Run the [`Reactor`] indefinitely and react to [`Message`]'s.
     pub async fn run(self) {}
 }
+
+pub fn react() {}

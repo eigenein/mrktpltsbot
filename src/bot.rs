@@ -18,7 +18,14 @@ use crate::{
     telegram::{
         Telegram,
         commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
-        methods::{GetMe, Method, SendMessage, SendNotification, SetMyDescription},
+        methods::{
+            GetMe,
+            Method,
+            ResponsiveMethod,
+            SendMessage,
+            SendNotification,
+            SetMyDescription,
+        },
         objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters},
         render,
     },
@@ -82,7 +89,7 @@ impl Bot {
             .into_updates(self.offset, self.telegram_poll_timeout_secs)
             .inspect_ok(|update| info!(update.id, "Received update"))
             .try_filter_map(|update| async { Ok(Option::<Message>::from(update)) })
-            .inspect_ok(|message| info!(message.id, "Received message"))
+            .inspect_ok(|message| debug!(message.id, "Received message"))
             .try_filter_map(|message| async move {
                 // TODO: extract `filter_message`?
                 if let (Some(chat), Some(text)) = (message.chat, message.text) {
@@ -106,7 +113,7 @@ impl Bot {
                     if let Err(error) = this.on_message(chat_id, message_id, text.trim()).await {
                         this.on_error(chat_id, message_id, error).await;
                     }
-                    info!(message_id, "Done");
+                    info!(chat_id, message_id, "Done");
                     Ok(())
                 }
             })
@@ -121,18 +128,18 @@ impl Bot {
             .chat_id(&ChatId::Integer(chat_id))
             .text("💥 An internal error occurred and has been logged")
             .build()
-            .call_on(&self.telegram)
+            .call_discarded_on(&self.telegram)
             .await;
     }
 
-    #[instrument(skip_all, fields(chat_id = chat_id, message_id = message_id))]
+    #[instrument(skip_all)]
     async fn on_message(&self, chat_id: i64, message_id: u64, text: &str) -> Result {
         if !self.authorized_chat_ids.contains(&chat_id) {
             warn!(chat_id, "Unauthorized");
             let chat_id = ChatId::Integer(chat_id);
             let text = render::unauthorized(&chat_id).render().into_string().into();
-            let _ = SendMessage::quick_html(&chat_id, text)
-                .call_on(&self.telegram)
+            SendMessage::quick_html(&chat_id, text)
+                .call_discarded_on(&self.telegram)
                 .await?;
             return Ok(());
         }
@@ -204,14 +211,14 @@ impl Bot {
                 .markup("There are no items matching the search query. Try a different query or subscribe anyway to wait for them to appear")
                 .links(&[subscribe_link])
                 .render();
-            let _ = SendMessage::builder()
+            SendMessage::builder()
                 .chat_id(&chat_id.into())
                 .text(text)
                 .parse_mode(ParseMode::Html)
                 .reply_parameters(reply_parameters)
                 .link_preview_options(LinkPreviewOptions::DISABLED)
                 .build()
-                .call_on(&self.telegram)
+                .call_discarded_on(&self.telegram)
                 .await?;
         }
 
@@ -227,17 +234,17 @@ impl Bot {
     ) -> Result {
         if text == "/start" {
             // Just an initial greeting.
-            let _ = SendMessage::builder()
+            SendMessage::builder()
                 .chat_id(&chat_id.into())
                 .text("👋")
                 .build()
-                .call_on(&self.telegram)
+                .call_discarded_on(&self.telegram)
                 .await?;
-            let _ = SendMessage::builder()
+            SendMessage::builder()
                 .chat_id(&chat_id.into())
                 .text("Just send me a search query to start")
                 .build()
-                .call_on(&self.telegram)
+                .call_discarded_on(&self.telegram)
                 .await?;
         } else if let Some(payload) = text.strip_prefix("/start ") {
             // Command with a payload.
@@ -269,8 +276,8 @@ impl Bot {
                     .markup("✅ You are now subscribed")
                     .links(&[unsubscribe_link])
                     .render();
-                let _ = SendMessage::quick_html(&chat_id.into(), text.into())
-                    .call_on(&self.telegram)
+                SendMessage::quick_html(&chat_id.into(), text.into())
+                    .call_discarded_on(&self.telegram)
                     .await?;
             }
 
@@ -299,18 +306,18 @@ impl Bot {
                     .markup("✅ You are now unsubscribed")
                     .links(&[subscribe_link])
                     .render();
-                let _ = SendMessage::quick_html(&chat_id.into(), text.into())
-                    .call_on(&self.telegram)
+                SendMessage::quick_html(&chat_id.into(), text.into())
+                    .call_discarded_on(&self.telegram)
                     .await?;
             }
         } else {
             // Unknown command.
-            let _ = SendMessage::builder()
+            SendMessage::builder()
                 .chat_id(&chat_id.into())
                 .text("I am sorry, but I do not know this command")
                 .reply_parameters(reply_parameters)
                 .build()
-                .call_on(&self.telegram)
+                .call_discarded_on(&self.telegram)
                 .await?;
         }
         Ok(())
