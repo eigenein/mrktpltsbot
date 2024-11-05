@@ -19,11 +19,12 @@ use crate::{
         Telegram,
         commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
         methods::{GetMe, Method, SendMessage, SendNotification, SetMyDescription},
-        objects::{Chat, ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters},
+        objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters},
         render,
     },
 };
 
+#[deprecated = "It is being split up"]
 pub struct Bot {
     db: Db,
     marktplaats: Marktplaats,
@@ -85,15 +86,12 @@ impl Bot {
             .try_filter_map(|update| async { Ok(Option::<Message>::from(update)) })
             .inspect_ok(|message| info!(message.id, "Received message"))
             .try_filter_map(|message| async move {
-                if let (
-                    Some(Chat {
-                        // TODO: support username chat IDs.
-                        id: ChatId::Integer(chat_id),
-                    }),
-                    Some(text),
-                ) = (message.chat, message.text)
-                {
-                    Ok(Some((message.id, chat_id, text)))
+                if let (Some(chat), Some(text)) = (message.chat, message.text) {
+                    if let ChatId::Integer(chat_id) = chat.id {
+                        Ok(Some((message.id, chat_id, text)))
+                    } else {
+                        Ok(None)
+                    }
                 } else {
                     warn!(message.id, "Message without an associated chat or text");
                     Ok(None)
