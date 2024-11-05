@@ -19,7 +19,7 @@ use crate::{
     prelude::*,
     telegram::{
         error::TelegramError,
-        methods::{AllowedUpdate, GetUpdates, Method, ResponsiveMethod},
+        methods::{AllowedUpdate, GetUpdates, Method},
         objects::Update,
         result::TelegramResult,
     },

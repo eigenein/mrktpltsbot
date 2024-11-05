@@ -18,14 +18,7 @@ use crate::{
     telegram::{
         Telegram,
         commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
-        methods::{
-            GetMe,
-            Method,
-            ResponsiveMethod,
-            SendMessage,
-            SendNotification,
-            SetMyDescription,
-        },
+        methods::{AnyMethod, GetMe, Method, SendMessage, SetMyDescription},
         objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters},
         render,
     },
@@ -197,9 +190,9 @@ impl Bot {
                 .search_query(&query)
                 .links(&[subscribe_link])
                 .render();
-            SendNotification::builder()
+            AnyMethod::from_listing()
                 .chat_id(&chat_id.into())
-                .caption(&description)
+                .text(&description)
                 .pictures(&listing.pictures)
                 .reply_parameters(reply_parameters)
                 .parse_mode(ParseMode::Html)

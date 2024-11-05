@@ -1,21 +1,26 @@
 use std::collections::HashSet;
 
 use bon::Builder;
+use futures::{Stream, stream};
 
-use crate::{db::Db, marktplaats::Marktplaats};
+use crate::{
+    db::Db,
+    marktplaats::Marktplaats,
+    prelude::*,
+    telegram::{methods::Method, objects::Update},
+};
 
 /// Telegram [`Message`] reactor.
 #[derive(Builder)]
-pub struct Reactor<M> {
-    update_stream: M,
+pub struct Reactor {
     authorized_chat_ids: HashSet<i64>,
     db: Db,
     marktplaats: Marktplaats,
 }
 
-impl<M> Reactor<M> {
-    /// Run the [`Reactor`] indefinitely and react to [`Message`]'s.
-    pub async fn run(self) {}
+impl Reactor {
+    /// Run the reactor indefinitely and produce reactions.
+    pub fn run(self, updates: impl Stream<Item = Result<Update>>) {
+        todo!()
+    }
 }
-
-pub fn react() {}
