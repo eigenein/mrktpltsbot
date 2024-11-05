@@ -1,7 +1,11 @@
-use bon::builder;
+use std::collections::HashSet;
+
+use bon::{Builder, builder};
 use futures::{Stream, StreamExt, TryStreamExt, stream};
 
 use crate::{
+    db::Db,
+    marktplaats::Marktplaats,
     prelude::*,
     telegram::{
         Telegram,
@@ -12,7 +16,7 @@ use crate::{
 
 /// [`Stream`] of Telegram [`Update`]'s.
 #[builder(finish_fn = build)]
-pub fn update_stream(
+pub fn updates(
     telegram: Telegram,
     offset: u64,
     poll_timeout_secs: u64,
@@ -35,4 +39,18 @@ pub fn update_stream(
         )))
     })
     .try_flatten()
+}
+
+/// Telegram [`Message`] reactor.
+#[derive(Builder)]
+pub struct Reactor<M> {
+    update_stream: M,
+    authorized_chat_ids: HashSet<i64>,
+    db: Db,
+    marktplaats: Marktplaats,
+}
+
+impl<M> Reactor<M> {
+    /// Run the [`Reactor`] indefinitely and react to [`Message`]'s.
+    pub async fn run(self) {}
 }

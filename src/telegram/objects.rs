@@ -31,6 +31,15 @@ pub struct Update {
     pub payload: UpdatePayload,
 }
 
+impl From<Update> for Option<Message> {
+    fn from(update: Update) -> Self {
+        match update.payload {
+            UpdatePayload::Message(message) => Some(message),
+            UpdatePayload::Other => None,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[must_use]
 pub enum UpdatePayload {

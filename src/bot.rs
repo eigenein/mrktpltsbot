@@ -7,7 +7,6 @@ use futures::TryStreamExt;
 use maud::Render;
 
 use crate::{
-    bot::telegram::update_stream,
     db::{
         Db,
         query_hash::QueryHash,
@@ -20,7 +19,7 @@ use crate::{
         Telegram,
         commands::{CommandBuilder, CommandPayload, SubscriptionStartCommand},
         methods::{GetMe, Method, SendMessage, SendNotification, SetMyDescription},
-        objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters, Update, UpdatePayload},
+        objects::{Chat, ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters},
         render,
     },
 };
@@ -75,72 +74,76 @@ impl Bot {
 
 impl Bot {
     /// Run the bot indefinitely.
-    pub async fn try_run(self) -> Result {
+    pub async fn run(self) {
         info!("Running Telegram bot…");
-        update_stream()
+        telegram::updates()
             .telegram(self.telegram.clone())
             .offset(self.offset)
             .poll_timeout_secs(self.telegram_poll_timeout_secs)
             .build()
-            .try_for_each(|update| async {
-                let update_id = update.id;
-                if let Err(error) = self.on_update(update).await {
-                    error!("Failed to handle the update #{update_id}: {error:#}");
+            .inspect_ok(|update| info!(update.id, "Received update"))
+            .try_filter_map(|update| async { Ok(Option::<Message>::from(update)) })
+            .inspect_ok(|message| info!(message.id, "Received message"))
+            .try_filter_map(|message| async move {
+                if let (
+                    Some(Chat {
+                        // TODO: support username chat IDs.
+                        id: ChatId::Integer(chat_id),
+                    }),
+                    Some(text),
+                ) = (message.chat, message.text)
+                {
+                    Ok(Some((message.id, chat_id, text)))
+                } else {
+                    warn!(message.id, "Message without an associated chat or text");
+                    Ok(None)
                 }
-                Ok(())
+            })
+            .inspect_ok(|(message_id, chat_id, text)| {
+                info!(message_id, chat_id, text, "Filtered message");
+            })
+            .try_for_each(|(message_id, chat_id, text)| {
+                let this = &self;
+                async move {
+                    if let Err(error) = this.on_message(chat_id, message_id, text.trim()).await {
+                        this.on_error(chat_id, message_id, error).await;
+                    }
+                    info!(message_id, "Done");
+                    Ok(())
+                }
             })
             .await
-            .context("Telegram updates loop failed")
+            .expect("any error should be handled by now");
     }
 
-    #[instrument(skip_all, err(level = Level::DEBUG))]
-    async fn on_update(&self, update: Update) -> Result {
-        let UpdatePayload::Message(message) = update.payload else {
-            bail!("The bot should only receive message updates")
-        };
-        let (Some(chat), Some(text)) = (message.chat, message.text) else {
-            bail!("Message without an associated chat or text");
-        };
-        let text = text.trim();
-        info!(update.id, ?chat.id, text, "Received");
+    /// Gracefully handle the error.
+    async fn on_error(&self, chat_id: i64, message_id: u64, error: Error) {
+        error!("Failed to handle the update #{message_id}: {error:#}");
+        let _ = SendMessage::builder()
+            .chat_id(&ChatId::Integer(chat_id))
+            .text("💥 An internal error occurred and has been logged")
+            .build()
+            .call_on(&self.telegram)
+            .await;
+    }
 
-        let reply_parameters = ReplyParameters::builder()
-            .message_id(message.id)
-            .allow_sending_without_reply(true)
-            .build();
-        if let Err(error) = self.on_message(&chat.id, text, reply_parameters).await {
-            let _ = SendMessage::builder()
-                .chat_id(&chat.id)
-                .text("💔 An internal error occurred and has been logged")
-                .build()
+    #[instrument(skip_all, fields(chat_id = ?chat_id, message_id = message_id))]
+    async fn on_message(&self, chat_id: i64, message_id: u64, text: &str) -> Result {
+        if !self.authorized_chat_ids.contains(&chat_id) {
+            warn!(chat_id, "Unauthorized");
+            let chat_id = ChatId::Integer(chat_id);
+            let text = render::unauthorized(&chat_id).render().into_string().into();
+            let _ = SendMessage::quick_html(&chat_id, text)
                 .call_on(&self.telegram)
-                .await;
-            bail!(error);
+                .await?;
+            return Ok(());
         }
 
-        info!(update.id, "Done");
-        Ok(())
-    }
+        let reply_parameters = ReplyParameters::builder()
+            .message_id(message_id)
+            .allow_sending_without_reply(true)
+            .build();
 
-    #[instrument(skip_all)]
-    async fn on_message(
-        &self,
-        chat_id: &ChatId,
-        text: &str,
-        reply_parameters: ReplyParameters,
-    ) -> Result {
-        let chat_id = match chat_id {
-            ChatId::Integer(chat_id) if self.authorized_chat_ids.contains(chat_id) => *chat_id,
-            _ => {
-                // TODO: support username chat IDs.
-                warn!(?chat_id, "Unauthorized");
-                let text = render::unauthorized(chat_id).render().into_string().into();
-                let _ = SendMessage::quick_html(chat_id, text)
-                    .call_on(&self.telegram)
-                    .await?;
-                return Ok(());
-            }
-        };
         if text.starts_with('/') {
             self.handle_command(text, chat_id, reply_parameters).await
         } else {
@@ -217,7 +220,7 @@ impl Bot {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "command")]
+    #[instrument(skip_all)]
     async fn handle_command(
         &self,
         text: &str,

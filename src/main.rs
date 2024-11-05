@@ -45,7 +45,7 @@ async fn async_main(cli: Cli) -> Result {
         .authorized_chat_ids(authorized_chat_ids)
         .try_connect()
         .await?
-        .try_run()
-        .await
-        .context("fatal error")
+        .run()
+        .await;
+    Ok(())
 }
