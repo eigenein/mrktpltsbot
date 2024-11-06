@@ -1,11 +1,11 @@
 use anyhow::Context;
 use sqlx::{FromRow, SqliteConnection};
 
-use crate::{db::query_hash::QueryHash, prelude::*};
+use crate::prelude::*;
 
 #[derive(Debug, Eq, PartialEq, FromRow)]
 pub struct Subscription {
-    pub query_hash: QueryHash,
+    pub query_hash: i64,
     pub chat_id: i64,
 }
 

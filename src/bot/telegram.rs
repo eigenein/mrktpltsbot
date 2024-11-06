@@ -7,7 +7,6 @@ use maud::Render;
 use crate::{
     db::{
         Db,
-        query_hash::QueryHash,
         search_query::{SearchQueries, SearchQuery},
         subscription::{Subscription, Subscriptions},
     },
@@ -15,7 +14,7 @@ use crate::{
     prelude::*,
     telegram::{
         Telegram,
-        commands::{CommandBuilder, CommandPayload, SubscriptionAction, SubscriptionCommand},
+        commands::{CommandBuilder, CommandPayload, SubscriptionAction},
         methods::{AnyMethod, GetMe, Method, SendMessage, SetMyDescription},
         objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters, Update},
         render,
@@ -122,20 +121,17 @@ impl Reactor {
         let query = SearchQuery::from(query);
         let request = SearchRequest::standard(&query.text, 1);
         let mut listings = self.marktplaats.search(&request).await?;
-        info!(hash = query.hash.0, n_listings = listings.inner.len());
+        info!(query.hash, n_listings = listings.inner.len());
 
         SearchQueries(&mut *self.db.connection().await)
             .upsert(&query)
             .await?;
 
         // We need the subscribe command anyway, even if no listings were found.
-        let command_payload = CommandPayload::builder()
-            .subscription(SubscriptionCommand::subscribe_to(query.hash))
-            .build();
         let subscribe_link = self
             .command_builder
             .link()
-            .payload(&command_payload)
+            .payload(&CommandPayload::subscribe_to(query.hash))
             .content("Subscribe")
             .build();
 
@@ -203,9 +199,8 @@ impl Reactor {
             let mut reactions = Vec::new();
 
             if let Some(subscription_command) = command.subscription {
-                let query_hash = QueryHash(subscription_command.query_hash);
                 let subscription = Subscription {
-                    query_hash,
+                    query_hash: subscription_command.query_hash,
                     chat_id,
                 };
                 let connection = &mut *self.db.connection().await;
@@ -213,17 +208,13 @@ impl Reactor {
 
                 match SubscriptionAction::try_from(subscription_command.action) {
                     Ok(SubscriptionAction::Subscribe) => {
-                        info!(%query_hash, "Subscribing");
+                        info!(subscription.query_hash, "Subscribing");
                         subscriptions.upsert(&subscription).await?;
                         let unsubscribe_link = self
                             .command_builder
                             .link()
                             .content("Unsubscribe")
-                            .payload(
-                                &CommandPayload::builder()
-                                    .subscription(SubscriptionCommand::unsubscribe_from(query_hash))
-                                    .build(),
-                            )
+                            .payload(&CommandPayload::unsubscribe_from(subscription.query_hash))
                             .build();
                         let text = render::simple_message()
                             .markup("You are now subscribed")
@@ -235,17 +226,13 @@ impl Reactor {
                     }
 
                     Ok(SubscriptionAction::Unsubscribe) => {
-                        info!(%query_hash, "Unsubscribing");
+                        info!(subscription.query_hash, "Unsubscribing");
                         subscriptions.delete(&subscription).await?;
                         let subscribe_link = self
                             .command_builder
                             .link()
                             .content("Re-subscribe")
-                            .payload(
-                                &CommandPayload::builder()
-                                    .subscription(SubscriptionCommand::subscribe_to(query_hash))
-                                    .build(),
-                            )
+                            .payload(&CommandPayload::subscribe_to(subscription.query_hash))
                             .build();
                         let text = render::simple_message()
                             .markup("You are now unsubscribed")

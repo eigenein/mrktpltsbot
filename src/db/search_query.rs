@@ -3,19 +3,26 @@ use std::path::Path;
 use anyhow::Context;
 use sqlx::{FromRow, SqliteConnection};
 
-use crate::{db::query_hash::QueryHash, prelude::*};
+use crate::prelude::*;
 
 /// User's search query.
 #[derive(Debug, PartialEq, Eq, FromRow)]
 pub struct SearchQuery {
     pub text: String,
-    pub hash: QueryHash,
+
+    /// [SeaHash][1] of a search query.
+    ///
+    /// Used instead of the text where the payload size is limited (e.g. in `/start` payload).
+    ///
+    /// [1]: https://docs.rs/seahash/latest/seahash/
+    pub hash: i64,
 }
 
 impl From<String> for SearchQuery {
+    #[expect(clippy::cast_possible_wrap)]
     fn from(text: String) -> Self {
         Self {
-            hash: QueryHash::from(text.as_str()),
+            hash: seahash::hash(text.as_bytes()) as i64,
             text,
         }
     }

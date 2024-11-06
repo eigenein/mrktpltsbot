@@ -5,7 +5,7 @@ use maud::Render;
 use prost::{Enumeration, Message};
 use url::Url;
 
-use crate::{db::query_hash::QueryHash, prelude::*, telegram::render::Link};
+use crate::{prelude::*, telegram::render::Link};
 
 /// Builder of `/start` commands with [deep linking][1].
 ///
@@ -50,28 +50,40 @@ impl CommandPayload {
     pub fn to_base64(&self) -> String {
         base64_url::encode(&self.encode_to_vec())
     }
+
+    pub const fn subscribe_to(query_hash: i64) -> Self {
+        Self {
+            subscription: Some(SubscriptionCommand::subscribe_to(query_hash)),
+        }
+    }
+
+    pub const fn unsubscribe_from(query_hash: i64) -> Self {
+        Self {
+            subscription: Some(SubscriptionCommand::unsubscribe_from(query_hash)),
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Message)]
 pub struct SubscriptionCommand {
-    #[prost(tag = "1", fixed64)]
-    pub query_hash: u64,
+    #[prost(tag = "1", sfixed64)]
+    pub query_hash: i64,
 
     #[prost(tag = "2", enumeration = "SubscriptionAction")]
     pub action: i32,
 }
 
 impl SubscriptionCommand {
-    pub const fn subscribe_to(query_hash: QueryHash) -> Self {
+    pub const fn subscribe_to(query_hash: i64) -> Self {
         Self {
-            query_hash: query_hash.0,
+            query_hash,
             action: SubscriptionAction::Subscribe as i32,
         }
     }
 
-    pub const fn unsubscribe_from(query_hash: QueryHash) -> Self {
+    pub const fn unsubscribe_from(query_hash: i64) -> Self {
         Self {
-            query_hash: query_hash.0,
+            query_hash,
             action: SubscriptionAction::Unsubscribe as i32,
         }
     }
@@ -88,16 +100,15 @@ pub enum SubscriptionAction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::search_query::SearchQuery;
 
     #[test]
     fn test_build_subscribe_link_ok() -> Result {
-        let builder = CommandBuilder::new("mrktpltsbot")?;
+        let search_query = SearchQuery::from("unifi".to_string());
         let command = CommandPayload::builder()
-            .subscription(SubscriptionCommand::subscribe_to(QueryHash(
-                17_108_638_805_232_950_527,
-            )))
+            .subscription(SubscriptionCommand::subscribe_to(search_query.hash))
             .build();
-        let link = builder
+        let link = CommandBuilder::new("mrktpltsbot")?
             .link()
             .content("Subscribe")
             .payload(&command)
@@ -117,9 +128,9 @@ mod tests {
         let payload = CommandPayload::from_base64("GgsJ_5xfEFkYbu0QAQ")?;
         assert_eq!(
             payload.subscription,
-            Some(SubscriptionCommand::subscribe_to(QueryHash(
-                17_108_638_805_232_950_527
-            )))
+            Some(SubscriptionCommand::subscribe_to(
+                -1_338_105_268_476_601_089
+            ))
         );
         Ok(())
     }
