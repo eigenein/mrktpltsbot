@@ -6,7 +6,7 @@ use sqlx::{FromRow, SqliteConnection};
 use crate::{db::query_hash::QueryHash, prelude::*};
 
 /// User's search query.
-#[derive(FromRow)]
+#[derive(Debug, PartialEq, Eq, FromRow)]
 pub struct SearchQuery {
     pub text: String,
     pub hash: QueryHash,
@@ -46,7 +46,7 @@ mod tests {
 
     #[tokio::test]
     async fn upsert_search_query_ok() -> Result {
-        let db = Db::new(Path::new(":memory:")).await?;
+        let db = Db::try_new(Path::new(":memory:")).await?;
         let mut connection = db.connection().await;
         let mut search_queries = SearchQueries(&mut connection);
 

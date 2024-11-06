@@ -1,5 +1,4 @@
 use anyhow::Context;
-use futures::{Stream, TryStreamExt};
 use sqlx::{FromRow, SqliteConnection};
 
 use crate::{db::query_hash::QueryHash, prelude::*};
@@ -40,21 +39,11 @@ impl<'a> Subscriptions<'a> {
 
         Ok(())
     }
-
-    /// Get all subscriptions from all users.
-    pub fn all(&mut self) -> impl Stream<Item = Result<Subscription>> + '_ {
-        // language=sqlite
-        sqlx::query_as("SELECT * FROM subscriptions")
-            .fetch(&mut *self.0)
-            .map_err(Error::from)
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::path::Path;
-
-    use futures::StreamExt;
 
     use super::*;
     use crate::db::{
@@ -64,7 +53,7 @@ mod tests {
 
     #[tokio::test]
     async fn upsert_subscription_ok() -> Result {
-        let db = Db::new(Path::new(":memory:")).await?;
+        let db = Db::try_new(Path::new(":memory:")).await?;
         let mut connection = db.connection().await;
 
         let query = SearchQuery::from("test".to_string());
@@ -78,13 +67,6 @@ mod tests {
 
         subscriptions.upsert(&subscription).await?;
         subscriptions.upsert(&subscription).await?; // verify conflicts
-        let all: Vec<_> = subscriptions.all().try_collect().await?;
-
-        assert_eq!(all.len(), 1);
-        assert_eq!(all[0], subscription);
-
-        subscriptions.delete(&subscription).await?;
-        assert!(subscriptions.all().collect::<Vec<_>>().await.is_empty());
 
         Ok(())
     }

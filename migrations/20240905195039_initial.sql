@@ -1,6 +1,6 @@
 CREATE TABLE search_queries
 (
-    -- SeaHash'ed search query,
+    -- SeaHash'ed search QUERY,
     hash INTEGER PRIMARY KEY,
 
     text TEXT NOT NULL
@@ -16,7 +16,7 @@ CREATE TABLE items
     updated_at INTEGER NOT NULL
 );
 
--- Search query subscriptions.
+-- Search QUERY subscriptions.
 CREATE TABLE subscriptions
 (
     chat_id    INTEGER NOT NULL,
@@ -28,9 +28,8 @@ CREATE TABLE subscriptions
 -- Sent notifications.
 CREATE TABLE notifications
 (
-    item_id    TEXT    NOT NULL REFERENCES items (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    chat_id    INTEGER NOT NULL,
-    message_id INTEGER NOT NULL,
+    item_id TEXT    NOT NULL REFERENCES items (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    chat_id INTEGER NOT NULL,
 
     PRIMARY KEY (item_id, chat_id)
 );

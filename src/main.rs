@@ -37,7 +37,7 @@ async fn async_main(cli: Cli) -> Result {
 
     Reactor::builder()
         .authorized_chat_ids(cli.authorized_chat_ids.into_iter().collect())
-        .db(Db::new(&cli.db).await?)
+        .db(Db::try_new(&cli.db).await?)
         .marktplaats(Marktplaats(client))
         .command_builder(bot::telegram::try_init(&telegram).await?)
         .build()

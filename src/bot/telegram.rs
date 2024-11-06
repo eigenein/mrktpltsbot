@@ -256,7 +256,7 @@ impl Reactor {
                         );
                     }
 
-                    _ => {}
+                    _ => {} // TODO: technically, I should return a message that the action is no longer supported
                 }
             }
 
