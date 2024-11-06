@@ -22,6 +22,10 @@ impl CommandBuilder {
         Ok(Self(base_url))
     }
 
+    pub const fn url(&self) -> &Url {
+        &self.0
+    }
+
     /// Build a new command link.
     #[builder(finish_fn = build)]
     pub fn link<C: Render>(&self, content: C, payload: &CommandPayload) -> Link<C> {

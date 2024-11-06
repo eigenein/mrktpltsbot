@@ -4,7 +4,7 @@ pub mod subscription;
 use std::path::Path;
 
 use anyhow::Context;
-use futures::{Stream, TryStreamExt, stream};
+use futures::{Stream, stream};
 use sqlx::{
     ConnectOptions,
     FromRow,
@@ -46,10 +46,10 @@ impl Db {
         self.0.lock().await
     }
 
-    /// Turn the database connection into endless stream of subscriptions.
-    pub fn into_subscriptions(
-        self,
-    ) -> impl Stream<Item = Result<Option<(Subscription, SearchQuery)>>> {
+    /// Get an endless stream of subscriptions.
+    pub fn subscriptions(
+        &self,
+    ) -> impl Stream<Item = Result<Option<(Subscription, SearchQuery)>>> + '_ {
         stream::try_unfold((self, i64::MIN), |(this, min_hash)| async move {
             let entry = this.next_subscription(min_hash).await?;
             let (next_min_hash, _) = min_hash.overflowing_add(1);
@@ -87,7 +87,7 @@ impl Db {
 mod tests {
     use std::pin::pin;
 
-    use futures::StreamExt;
+    use futures::{StreamExt, TryStreamExt};
 
     use super::*;
     use crate::db::{search_query::SearchQueries, subscription::Subscriptions};
@@ -122,7 +122,7 @@ mod tests {
         );
 
         // Test repeated reading:
-        let entries: Vec<_> = db.into_subscriptions().take(2).try_collect().await?;
+        let entries: Vec<_> = db.subscriptions().take(2).try_collect().await?;
         assert_eq!(entries[0].as_ref(), Some(&expected_entry));
         assert_eq!(entries[1].as_ref(), Some(&expected_entry));
 
@@ -131,11 +131,10 @@ mod tests {
 
     /// Test the subscription stream on an empty database.
     #[tokio::test]
-    async fn test_empty_into_subscriptions_ok() -> Result {
-        let entries = Db::try_new(Path::new(":memory:"))
-            .await?
-            .into_subscriptions();
-        assert_eq!(pin!(entries).try_next().await?, Some(None));
+    async fn test_empty_subscriptions_ok() -> Result {
+        let db = Db::try_new(Path::new(":memory:")).await?;
+        let mut entries = pin!(db.subscriptions());
+        assert_eq!(entries.try_next().await?, Some(None));
         Ok(())
     }
 }

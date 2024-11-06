@@ -27,7 +27,7 @@ pub struct Reactor<'s> {
     authorized_chat_ids: HashSet<i64>,
     db: &'s Db,
     marktplaats: &'s Marktplaats,
-    command_builder: CommandBuilder,
+    command_builder: &'s CommandBuilder,
 }
 
 impl<'s> Reactor<'s> {
@@ -36,7 +36,10 @@ impl<'s> Reactor<'s> {
         &'s self,
         updates: impl Stream<Item = Result<Update>> + 's,
     ) -> impl Stream<Item = Result<Vec<AnyMethod<'static>>>> + 's {
-        info!("Running Telegram reactor…");
+        info!(
+            me = self.command_builder.url().as_str(),
+            "Running Telegram reactor…",
+        );
         updates
             .inspect_ok(|update| info!(update.id, "Received update"))
             .try_filter_map(|update| async { Ok(Option::<Message>::from(update)) })
