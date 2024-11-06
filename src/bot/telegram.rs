@@ -23,16 +23,16 @@ use crate::{
 
 /// Telegram [`Message`] reactor.
 #[derive(Builder)]
-pub struct Reactor {
+pub struct Reactor<'s> {
     authorized_chat_ids: HashSet<i64>,
-    db: Db,
-    marktplaats: Marktplaats,
+    db: &'s Db,
+    marktplaats: &'s Marktplaats,
     command_builder: CommandBuilder,
 }
 
-impl Reactor {
+impl<'s> Reactor<'s> {
     /// Run the reactor indefinitely and produce reactions.
-    pub fn run<'s>(
+    pub fn run(
         &'s self,
         updates: impl Stream<Item = Result<Update>> + 's,
     ) -> impl Stream<Item = Result<Vec<AnyMethod<'static>>>> + 's {

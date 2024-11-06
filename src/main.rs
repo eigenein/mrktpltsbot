@@ -1,8 +1,8 @@
 use clap::Parser;
 use futures::{StreamExt, TryFutureExt, TryStreamExt, stream};
+use tokio::try_join;
 
 use crate::{
-    bot::telegram::Reactor,
     cli::Cli,
     client::Client,
     db::Db,
@@ -34,26 +34,28 @@ fn main() -> Result {
 async fn async_main(cli: Cli) -> Result {
     let client = Client::new()?;
     let telegram = Telegram::new(client.clone(), cli.bot_token.into())?;
+    let marktplaats = Marktplaats(client);
+    let db = Db::try_new(&cli.db).await?;
 
-    Reactor::builder()
+    let telegram_updates = telegram
+        .clone()
+        .into_updates(0, cli.telegram_poll_timeout_secs);
+    let telegram_reactor = bot::telegram::Reactor::builder()
         .authorized_chat_ids(cli.authorized_chat_ids.into_iter().collect())
-        .db(Db::try_new(&cli.db).await?)
-        .marktplaats(Marktplaats(client))
+        .db(&db)
+        .marktplaats(&marktplaats)
         .command_builder(bot::telegram::try_init(&telegram).await?)
-        .build()
-        .run(
-            telegram
-                .clone()
-                .into_updates(0, cli.telegram_poll_timeout_secs),
-        )
+        .build();
+    let telegram_reactor_task = telegram_reactor
+        .run(telegram_updates)
         .map_ok(|reactions| stream::iter(reactions).map(Ok))
         .try_flatten()
         .try_for_each(|reaction| {
             let telegram = &telegram;
             async move { reaction.call_discarded_on(telegram).await }
         })
-        .inspect_err(|error| error!("reactor error: {error:#}"))
-        .await?;
+        .inspect_err(|error| error!("Telegram reactor error: {error:#}"));
 
+    try_join!(telegram_reactor_task)?;
     Ok(())
 }
