@@ -1,33 +1,75 @@
 use std::{borrow::Cow, collections::VecDeque, iter::once};
 
 use bon::bon;
-use serde::{Serialize, de::IgnoredAny};
+use serde::Serialize;
 
 use crate::{
     marktplaats::listing::Picture,
+    prelude::*,
     telegram::{
+        Telegram,
         methods::{InputMediaPhoto, Media, Method, SendMediaGroup, SendMessage, SendPhoto},
         objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters},
     },
 };
 
+/// Well… a reaction to something.
+pub struct Reaction<'a> {
+    /// Methods to execute on Telegram to produce the reaction.
+    pub methods: Vec<ReactionMethod<'a>>,
+}
+
+impl<'a> Reaction<'a> {
+    /// Send the reaction to the specified [`Telegram`] connection.
+    pub async fn react_to(&self, telegram: &Telegram) -> Result {
+        for method in &self.methods {
+            match method {
+                ReactionMethod::Message(inner) => inner.call_discarded_on(telegram).await?,
+                ReactionMethod::Photo(inner) => inner.call_discarded_on(telegram).await?,
+                ReactionMethod::MediaGroup(inner) => inner.call_discarded_on(telegram).await?,
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'a> From<ReactionMethod<'a>> for Reaction<'a> {
+    fn from(method: ReactionMethod<'a>) -> Self {
+        Self {
+            methods: vec![method],
+        }
+    }
+}
+
+impl<'a> From<Vec<SendMessage<'a>>> for Reaction<'a> {
+    fn from(send_messages: Vec<SendMessage<'a>>) -> Self {
+        Self {
+            methods: send_messages
+                .into_iter()
+                .map(ReactionMethod::Message)
+                .collect(),
+        }
+    }
+}
+
+impl<'a> From<SendMessage<'a>> for Reaction<'a> {
+    fn from(send_message: SendMessage<'a>) -> Self {
+        ReactionMethod::Message(send_message).into()
+    }
+}
+
+/// Reaction method on Telegram.
 #[derive(Serialize)]
 #[serde(untagged)]
-pub enum Reaction<'a> {
+pub enum ReactionMethod<'a> {
     MediaGroup(SendMediaGroup<'a>),
     Message(SendMessage<'a>),
     Photo(SendPhoto<'a>),
 }
 
-impl<'a> From<SendMessage<'a>> for Reaction<'a> {
-    fn from(value: SendMessage<'a>) -> Self {
-        Self::Message(value)
-    }
-}
-
 #[bon]
-impl<'a> Reaction<'a> {
-    /// Build a new method from a listing contents.
+impl<'a> ReactionMethod<'a> {
+    /// Build a new reaction method from a listing contents.
     #[builder(finish_fn = build)]
     pub fn from_listing(
         chat_id: Cow<'a, ChatId>,
@@ -84,18 +126,6 @@ impl<'a> Reaction<'a> {
                         .build(),
                 )
             }
-        }
-    }
-}
-
-impl<'a> Method for Reaction<'a> {
-    type Response = IgnoredAny;
-
-    fn name(&self) -> &'static str {
-        match self {
-            Self::MediaGroup(send_media_group) => send_media_group.name(),
-            Self::Message(send_message) => send_message.name(),
-            Self::Photo(send_photo) => send_photo.name(),
         }
     }
 }

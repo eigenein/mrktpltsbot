@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use clap::Parser;
-use futures::{StreamExt, TryStreamExt, stream};
+use futures::TryStreamExt;
 
 use crate::{
     cli::Args,
@@ -9,7 +9,7 @@ use crate::{
     db::Db,
     marktplaats::Marktplaats,
     prelude::*,
-    telegram::{Telegram, methods::Method},
+    telegram::Telegram,
 };
 
 mod cli;
@@ -48,10 +48,7 @@ async fn async_main(cli: Args) -> Result {
         .marktplaats(&marktplaats)
         .command_builder(&command_builder)
         .build();
-    let telegram_reactions = telegram_reactor
-        .run(telegram_updates)
-        .map_ok(|reactions| stream::iter(reactions).map(Ok))
-        .try_flatten();
+    let telegram_reactions = telegram_reactor.run(telegram_updates);
 
     // Handle Marktplaats subscriptions:
     let marktplaats_reactor = marktplaats::bot::Reactor::builder()
@@ -66,7 +63,7 @@ async fn async_main(cli: Args) -> Result {
     tokio_stream::StreamExt::merge(telegram_reactions, marktplaats_reactions)
         .try_for_each(|reaction| {
             let telegram = &telegram;
-            async move { reaction.call_discarded_on(telegram).await }
+            async move { reaction.react_to(telegram).await }
         })
         .await
         .context("reactor error")

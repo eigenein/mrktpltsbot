@@ -17,7 +17,7 @@ use crate::{
         commands::{CommandBuilder, CommandPayload, SubscriptionAction},
         methods::{GetMe, Method, SendMessage, SetMyDescription},
         objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters, Update},
-        reaction::Reaction,
+        reaction::{Reaction, ReactionMethod},
         render,
     },
 };
@@ -38,7 +38,7 @@ impl<'s> Reactor<'s> {
     pub fn run(
         &'s self,
         updates: impl Stream<Item = Result<Update>> + 's,
-    ) -> impl Stream<Item = Result<Vec<Reaction<'static>>>> + 's {
+    ) -> impl Stream<Item = Result<Reaction<'static>>> + 's {
         info!(
             me = self.command_builder.url().as_str(),
             "Running Telegram reactor…",
@@ -70,7 +70,7 @@ impl<'s> Reactor<'s> {
                         info!(chat_id, message_id, "Done");
                         Ok(reactions)
                     }
-                    Err(error) => Ok(vec![Self::on_error(chat_id.into(), message_id, &error)]),
+                    Err(error) => Ok(Self::on_error(chat_id.into(), message_id, &error)),
                 }
             })
     }
@@ -92,14 +92,12 @@ impl<'s> Reactor<'s> {
         chat_id: i64,
         message_id: u64,
         text: &str,
-    ) -> Result<Vec<Reaction<'static>>> {
+    ) -> Result<Reaction<'static>> {
         if !self.authorized_chat_ids.contains(&chat_id) {
             warn!("Unauthorized");
             let chat_id = ChatId::Integer(chat_id);
             let text = render::unauthorized(&chat_id).render().into_string().into();
-            return Ok(vec![
-                SendMessage::quick_html(Cow::Owned(chat_id), text).into(),
-            ]);
+            return Ok(SendMessage::quick_html(Cow::Owned(chat_id), text).into());
         }
 
         let reply_parameters = ReplyParameters::builder()
@@ -123,7 +121,7 @@ impl<'s> Reactor<'s> {
         query: String,
         chat_id: i64,
         reply_parameters: ReplyParameters,
-    ) -> Result<Vec<Reaction<'static>>> {
+    ) -> Result<Reaction<'static>> {
         let query = SearchQuery::from(query);
         let request = SearchRequest::standard(&query.text, 1);
         let mut listings = self.marktplaats.search(&request).await?;
@@ -142,30 +140,27 @@ impl<'s> Reactor<'s> {
                 .search_query(&query)
                 .links(&[subscribe_link])
                 .render();
-            Ok(vec![
-                Reaction::from_listing()
-                    .chat_id(Cow::Owned(chat_id.into()))
-                    .text(description)
-                    .pictures(listing.pictures)
-                    .reply_parameters(reply_parameters)
-                    .parse_mode(ParseMode::Html)
-                    .build(),
-            ])
+            Ok(ReactionMethod::from_listing()
+                .chat_id(Cow::Owned(chat_id.into()))
+                .text(description)
+                .pictures(listing.pictures)
+                .reply_parameters(reply_parameters)
+                .parse_mode(ParseMode::Html)
+                .build()
+                .into())
         } else {
             let text = render::simple_message()
                 .markup("There are no items matching the search query. Try a different query or subscribe anyway to wait for them to appear")
                 .links(&[subscribe_link])
                 .render();
-            Ok(vec![
-                SendMessage::builder()
-                    .chat_id(Cow::Owned(chat_id.into()))
-                    .text(text)
-                    .parse_mode(ParseMode::Html)
-                    .reply_parameters(reply_parameters)
-                    .link_preview_options(LinkPreviewOptions::DISABLED)
-                    .build()
-                    .into(),
-            ])
+            Ok(SendMessage::builder()
+                .chat_id(Cow::Owned(chat_id.into()))
+                .text(text)
+                .parse_mode(ParseMode::Html)
+                .reply_parameters(reply_parameters)
+                .link_preview_options(LinkPreviewOptions::DISABLED)
+                .build()
+                .into())
         }
     }
 
@@ -175,29 +170,28 @@ impl<'s> Reactor<'s> {
         text: &str,
         chat_id: i64,
         reply_parameters: ReplyParameters,
-    ) -> Result<Vec<Reaction<'static>>> {
+    ) -> Result<Reaction<'static>> {
         if text == "/start" {
             // Just an initial greeting.
             let chat_id: Cow<'_, ChatId> = Cow::Owned(ChatId::Integer(chat_id));
-            return Ok(vec![
+            let methods = vec![
                 SendMessage::builder()
                     .chat_id(chat_id.clone())
                     .text("👋")
-                    .build()
-                    .into(),
+                    .build(),
                 SendMessage::builder()
                     .chat_id(chat_id)
                     .text("Just send me a search query to start")
-                    .build()
-                    .into(),
-            ]);
+                    .build(),
+            ];
+            return Ok(methods.into());
         }
 
         if let Some(payload) = text.strip_prefix("/start ") {
             // Command with a payload.
             let command = CommandPayload::from_base64(payload)?;
             debug!(?command, "Received command");
-            let mut reactions = Vec::new();
+            let mut methods: Vec<SendMessage> = Vec::new();
 
             if let Some(subscription_command) = command.subscription {
                 let subscription = Subscription {
@@ -218,9 +212,10 @@ impl<'s> Reactor<'s> {
                             .markup("You are now subscribed")
                             .links(&[unsubscribe_link])
                             .render();
-                        reactions.push(
-                            SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into(),
-                        );
+                        methods.push(SendMessage::quick_html(
+                            Cow::Owned(chat_id.into()),
+                            text.into(),
+                        ));
                     }
 
                     Ok(SubscriptionAction::Unsubscribe) => {
@@ -236,27 +231,26 @@ impl<'s> Reactor<'s> {
                             .markup("You are now unsubscribed")
                             .links(&[subscribe_link])
                             .render();
-                        reactions.push(
-                            SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()).into(),
-                        );
+                        methods.push(SendMessage::quick_html(
+                            Cow::Owned(chat_id.into()),
+                            text.into(),
+                        ));
                     }
 
                     _ => {} // TODO: technically, I should return a message that the action is no longer supported
                 }
             }
 
-            return Ok(reactions);
+            return Ok(methods.into());
         }
 
         // Unknown command.
-        Ok(vec![
-            SendMessage::builder()
-                .chat_id(Cow::Owned(chat_id.into()))
-                .text("I am sorry, but I do not know this command")
-                .reply_parameters(reply_parameters)
-                .build()
-                .into(),
-        ])
+        Ok(SendMessage::builder()
+            .chat_id(Cow::Owned(chat_id.into()))
+            .text("I am sorry, but I do not know this command")
+            .reply_parameters(reply_parameters)
+            .build()
+            .into())
     }
 }
 
