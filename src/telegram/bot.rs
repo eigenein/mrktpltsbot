@@ -134,12 +134,7 @@ impl<'s> Reactor<'s> {
             .await?;
 
         // We need the subscribe command anyway, even if no listings were found.
-        let subscribe_link = self
-            .command_builder
-            .link()
-            .payload(&CommandPayload::subscribe_to(query.hash))
-            .content("Subscribe")
-            .build();
+        let subscribe_link = self.command_builder.subscribe_link(query.hash);
 
         if let Some(listing) = listings.inner.pop() {
             let description = render::listing_description()
@@ -218,10 +213,7 @@ impl<'s> Reactor<'s> {
                         subscriptions.upsert(&subscription).await?;
                         let unsubscribe_link = self
                             .command_builder
-                            .link()
-                            .content("Unsubscribe")
-                            .payload(&CommandPayload::unsubscribe_from(subscription.query_hash))
-                            .build();
+                            .unsubscribe_link(subscription.query_hash);
                         let text = render::simple_message()
                             .markup("You are now subscribed")
                             .links(&[unsubscribe_link])

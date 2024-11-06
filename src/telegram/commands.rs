@@ -22,6 +22,7 @@ impl CommandBuilder {
         Ok(Self(base_url))
     }
 
+    /// Return the command builder base URL.
     pub const fn url(&self) -> &Url {
         &self.0
     }
@@ -33,6 +34,22 @@ impl CommandBuilder {
         url.query_pairs_mut()
             .append_pair("start", &payload.to_base64());
         Link::builder().content(content).url(url).build()
+    }
+
+    /// Produce a standard «Subscribe» link.
+    pub fn subscribe_link(&self, to_query_hash: i64) -> Link<&'static str> {
+        self.link()
+            .payload(&CommandPayload::subscribe_to(to_query_hash))
+            .content("Subscribe")
+            .build()
+    }
+
+    /// Produce a standard «Unsubscribe» link.
+    pub fn unsubscribe_link(&self, from_query_hash: i64) -> Link<&'static str> {
+        self.link()
+            .content("Unsubscribe")
+            .payload(&CommandPayload::unsubscribe_from(from_query_hash))
+            .build()
     }
 }
 
@@ -109,14 +126,7 @@ mod tests {
     #[test]
     fn test_build_subscribe_link_ok() -> Result {
         let search_query = SearchQuery::from("unifi".to_string());
-        let command = CommandPayload::builder()
-            .subscription(SubscriptionCommand::subscribe_to(search_query.hash))
-            .build();
-        let link = CommandBuilder::new("mrktpltsbot")?
-            .link()
-            .content("Subscribe")
-            .payload(&command)
-            .build();
+        let link = CommandBuilder::new("mrktpltsbot")?.subscribe_link(search_query.hash);
 
         // language=html
         assert_eq!(

@@ -19,7 +19,6 @@ pub enum Reaction<'a> {
     Photo(SendPhoto<'a>),
 }
 
-// TODO: macro.
 impl<'a> From<SendMessage<'a>> for Reaction<'a> {
     fn from(value: SendMessage<'a>) -> Self {
         Self::Message(value)
