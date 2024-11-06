@@ -1,20 +1,18 @@
 use bon::Builder;
 use futures::{Stream, stream};
 
-use crate::{db::Db, marktplaats::Marktplaats, telegram::methods::AnyMethod};
+use crate::{db::Db, marktplaats::Marktplaats, prelude::*, telegram::methods::AnyMethod};
 
 /// Marktplaats reactor.
 #[derive(Builder)]
-pub struct Reactor {
-    db: Db,
-    marktplaats: Marktplaats,
+pub struct Reactor<'s> {
+    db: &'s Db,
+    marktplaats: &'s Marktplaats,
 }
 
-impl Reactor {
+impl<'s> Reactor<'s> {
     /// Run the reactor indefinitely and produce reactions.
-    pub fn run<'s>(
-        &'s self,
-    ) -> impl Stream<Item = crate::prelude::Result<Vec<AnyMethod<'static>>>> + 's {
+    pub fn run(&'s self) -> impl Stream<Item = Result<AnyMethod<'static>>> + 's {
         stream::empty() // TODO
     }
 }

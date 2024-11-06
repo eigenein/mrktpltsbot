@@ -1,6 +1,5 @@
 use clap::Parser;
-use futures::{StreamExt, TryFutureExt, TryStreamExt, stream};
-use tokio::try_join;
+use futures::{StreamExt, TryStreamExt, stream};
 
 use crate::{
     cli::Cli,
@@ -46,16 +45,19 @@ async fn async_main(cli: Cli) -> Result {
         .marktplaats(&marktplaats)
         .command_builder(bot::telegram::try_init(&telegram).await?)
         .build();
-    let telegram_reactor_task = telegram_reactor
+    let marktplaats_reactor = bot::marktplaats::Reactor::builder()
+        .db(&db)
+        .marktplaats(&marktplaats)
+        .build();
+    telegram_reactor
         .run(telegram_updates)
         .map_ok(|reactions| stream::iter(reactions).map(Ok))
         .try_flatten()
+        .chain(marktplaats_reactor.run())
         .try_for_each(|reaction| {
             let telegram = &telegram;
             async move { reaction.call_discarded_on(telegram).await }
         })
-        .inspect_err(|error| error!("Telegram reactor error: {error:#}"));
-
-    try_join!(telegram_reactor_task)?;
-    Ok(())
+        .await
+        .context("reactor error")
 }
