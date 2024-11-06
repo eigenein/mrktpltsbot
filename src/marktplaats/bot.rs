@@ -8,10 +8,12 @@ use crate::{
     db::Db,
     marktplaats::Marktplaats,
     prelude::*,
-    telegram::{commands::CommandBuilder, methods::AnyMethod},
+    telegram::{commands::CommandBuilder, reaction::Reaction},
 };
 
 /// Marktplaats reactor.
+///
+/// It crawls Marktplaats and produces reactions on the items.
 #[derive(Builder)]
 pub struct Reactor<'s> {
     db: &'s Db,
@@ -22,7 +24,7 @@ pub struct Reactor<'s> {
 
 impl<'s> Reactor<'s> {
     /// Run the reactor indefinitely and produce reactions.
-    pub fn run(&'s self) -> impl Stream<Item = Result<AnyMethod<'static>>> + 's {
+    pub fn run(&'s self) -> impl Stream<Item = Result<Reaction<'static>>> + 's {
         info!(?self.crawl_interval, "Running Marktplaats reactor…");
         self.db
             .subscriptions()

@@ -15,13 +15,16 @@ use crate::{
     telegram::{
         Telegram,
         commands::{CommandBuilder, CommandPayload, SubscriptionAction},
-        methods::{AnyMethod, GetMe, Method, SendMessage, SetMyDescription},
+        methods::{GetMe, Method, SendMessage, SetMyDescription},
         objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters, Update},
+        reaction::Reaction,
         render,
     },
 };
 
 /// Telegram [`Message`] reactor.
+///
+/// It listens to Telegram [`Update`]'s and produces reactions on them.
 #[derive(Builder)]
 pub struct Reactor<'s> {
     authorized_chat_ids: HashSet<i64>,
@@ -35,7 +38,7 @@ impl<'s> Reactor<'s> {
     pub fn run(
         &'s self,
         updates: impl Stream<Item = Result<Update>> + 's,
-    ) -> impl Stream<Item = Result<Vec<AnyMethod<'static>>>> + 's {
+    ) -> impl Stream<Item = Result<Vec<Reaction<'static>>>> + 's {
         info!(
             me = self.command_builder.url().as_str(),
             "Running Telegram reactor…",
@@ -74,7 +77,7 @@ impl<'s> Reactor<'s> {
 
     /// Gracefully handle the error.
     #[instrument(skip_all, fields(chat_id = %chat_id, message_id = message_id))]
-    fn on_error(chat_id: ChatId, message_id: u64, error: &Error) -> AnyMethod<'static> {
+    fn on_error(chat_id: ChatId, message_id: u64, error: &Error) -> Reaction<'static> {
         error!("Failed to handle the message: {error:#}");
         SendMessage::builder()
             .chat_id(Cow::Owned(chat_id))
@@ -89,7 +92,7 @@ impl<'s> Reactor<'s> {
         chat_id: i64,
         message_id: u64,
         text: &str,
-    ) -> Result<Vec<AnyMethod<'static>>> {
+    ) -> Result<Vec<Reaction<'static>>> {
         if !self.authorized_chat_ids.contains(&chat_id) {
             warn!("Unauthorized");
             let chat_id = ChatId::Integer(chat_id);
@@ -120,7 +123,7 @@ impl<'s> Reactor<'s> {
         query: String,
         chat_id: i64,
         reply_parameters: ReplyParameters,
-    ) -> Result<Vec<AnyMethod<'static>>> {
+    ) -> Result<Vec<Reaction<'static>>> {
         let query = SearchQuery::from(query);
         let request = SearchRequest::standard(&query.text, 1);
         let mut listings = self.marktplaats.search(&request).await?;
@@ -145,7 +148,7 @@ impl<'s> Reactor<'s> {
                 .links(&[subscribe_link])
                 .render();
             Ok(vec![
-                AnyMethod::from_listing()
+                Reaction::from_listing()
                     .chat_id(Cow::Owned(chat_id.into()))
                     .text(description)
                     .pictures(listing.pictures)
@@ -177,7 +180,7 @@ impl<'s> Reactor<'s> {
         text: &str,
         chat_id: i64,
         reply_parameters: ReplyParameters,
-    ) -> Result<Vec<AnyMethod<'static>>> {
+    ) -> Result<Vec<Reaction<'static>>> {
         if text == "/start" {
             // Just an initial greeting.
             let chat_id: Cow<'_, ChatId> = Cow::Owned(ChatId::Integer(chat_id));

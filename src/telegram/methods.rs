@@ -1,6 +1,6 @@
-use std::{borrow::Cow, collections::VecDeque, fmt::Debug, iter::once, time::Duration};
+use std::{borrow::Cow, fmt::Debug, time::Duration};
 
-use bon::{Builder, bon, builder};
+use bon::{Builder, builder};
 use serde::{
     Serialize,
     de::{DeserializeOwned, IgnoredAny},
@@ -8,7 +8,6 @@ use serde::{
 
 use crate::{
     client::Client,
-    marktplaats::listing::Picture,
     prelude::*,
     serde::as_inner_json,
     telegram::{Telegram, objects::*},
@@ -240,95 +239,4 @@ pub struct InputMediaPhoto<'a> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show_caption_above_media: Option<bool>,
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-#[allow(clippy::enum_variant_names)]
-pub enum AnyMethod<'a> {
-    SendMediaGroup(SendMediaGroup<'a>),
-    SendMessage(SendMessage<'a>),
-    SendPhoto(SendPhoto<'a>),
-}
-
-// TODO: macro.
-impl<'a> From<SendMessage<'a>> for AnyMethod<'a> {
-    fn from(value: SendMessage<'a>) -> Self {
-        Self::SendMessage(value)
-    }
-}
-
-#[bon]
-impl<'a> AnyMethod<'a> {
-    /// Build a new method from a listing contents.
-    #[builder(finish_fn = build)]
-    pub fn from_listing(
-        chat_id: Cow<'a, ChatId>,
-        #[builder(into)] text: Cow<'a, str>,
-        parse_mode: ParseMode,
-        #[builder(into)] pictures: Vec<Picture>,
-        reply_parameters: Option<ReplyParameters>,
-    ) -> Self {
-        let mut image_urls: VecDeque<_> =
-            pictures.into_iter().filter_map(Picture::into_url).collect();
-
-        // Specific representation depends on how many pictures there are.
-        match image_urls.len() {
-            0 => Self::SendMessage(
-                SendMessage::builder()
-                    .chat_id(chat_id)
-                    .text(text)
-                    .parse_mode(parse_mode)
-                    .link_preview_options(LinkPreviewOptions::DISABLED)
-                    .maybe_reply_parameters(reply_parameters)
-                    .build(),
-            ),
-
-            1 => Self::SendPhoto(
-                // We cannot send one photo as a «media group», so sending it as a «photo».
-                SendPhoto::builder()
-                    .chat_id(chat_id)
-                    .photo(image_urls.pop_front().unwrap())
-                    .caption(text)
-                    .parse_mode(parse_mode)
-                    .maybe_reply_parameters(reply_parameters)
-                    .build(),
-            ),
-
-            _ => {
-                let first_media = Media::InputMediaPhoto(
-                    // Telegram needs the description in the first photo's caption.
-                    InputMediaPhoto::builder()
-                        .media(image_urls.pop_front().unwrap())
-                        .caption(text)
-                        .parse_mode(parse_mode)
-                        .build(),
-                );
-                let other_media = image_urls
-                    .into_iter()
-                    .map(|url| InputMediaPhoto::builder().media(url).build())
-                    .map(Media::InputMediaPhoto);
-                let media = once(first_media).chain(other_media).collect();
-                Self::SendMediaGroup(
-                    SendMediaGroup::builder()
-                        .chat_id(chat_id)
-                        .media(media)
-                        .maybe_reply_parameters(reply_parameters)
-                        .build(),
-                )
-            }
-        }
-    }
-}
-
-impl<'a> Method for AnyMethod<'a> {
-    type Response = IgnoredAny;
-
-    fn name(&self) -> &'static str {
-        match self {
-            Self::SendMediaGroup(send_media_group) => send_media_group.name(),
-            Self::SendMessage(send_message) => send_message.name(),
-            Self::SendPhoto(send_photo) => send_photo.name(),
-        }
-    }
 }

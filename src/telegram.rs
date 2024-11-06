@@ -3,6 +3,7 @@ pub mod commands;
 pub mod error;
 pub mod methods;
 pub mod objects;
+pub mod reaction;
 pub mod render;
 pub mod result;
 
