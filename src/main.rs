@@ -12,10 +12,9 @@ use crate::{
     telegram::{Telegram, methods::Method},
 };
 
-mod bot;
 mod cli;
 mod client;
-pub mod db;
+mod db;
 mod logging;
 mod marktplaats;
 mod prelude;
@@ -37,13 +36,13 @@ async fn async_main(cli: Args) -> Result {
     let telegram = Telegram::new(client.clone(), cli.telegram.bot_token.into())?;
     let marktplaats = Marktplaats(client);
     let db = Db::try_new(&cli.db).await?;
-    let command_builder = bot::telegram::try_init(&telegram).await?;
+    let command_builder = telegram::bot::try_init(&telegram).await?;
 
     // Handle Telegram updates:
     let telegram_updates = telegram
         .clone()
         .into_updates(0, cli.telegram.poll_timeout_secs);
-    let telegram_reactor = bot::telegram::Reactor::builder()
+    let telegram_reactor = telegram::bot::Reactor::builder()
         .authorized_chat_ids(cli.telegram.authorized_chat_ids.into_iter().collect())
         .db(&db)
         .marktplaats(&marktplaats)
@@ -55,7 +54,7 @@ async fn async_main(cli: Args) -> Result {
         .try_flatten();
 
     // Handle Marktplaats subscriptions:
-    let marktplaats_reactor = bot::marktplaats::Reactor::builder()
+    let marktplaats_reactor = marktplaats::bot::Reactor::builder()
         .db(&db)
         .marktplaats(&marktplaats)
         .crawl_interval(Duration::from_secs(cli.marktplaats_crawl_interval_secs))

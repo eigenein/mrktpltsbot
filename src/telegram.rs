@@ -1,3 +1,4 @@
+pub mod bot;
 pub mod commands;
 pub mod error;
 pub mod methods;

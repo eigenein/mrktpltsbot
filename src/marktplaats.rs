@@ -1,3 +1,4 @@
+pub mod bot;
 pub mod listing;
 
 use bon::Builder;
