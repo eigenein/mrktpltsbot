@@ -3,13 +3,12 @@ name: 🧪 Check
 on:
   push:
     branches:
-      - main
-      - dev
+      - master
     tags-ignore:
       - '**'
   pull_request:
     branches:
-      - main
+      - master
   workflow_dispatch: { }
 
 env:
