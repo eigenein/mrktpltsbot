@@ -125,25 +125,30 @@ mod tests {
     async fn test_into_subscriptions_ok() -> Result {
         let db = Db::try_new(Path::new(":memory:")).await?;
 
-        // Initial rows:
-        let search_query_first = SearchQuery::from("tado".to_string());
-        let subscription_first = Subscription { query_hash: search_query_first.hash, chat_id: 42 };
-        let search_query_last = SearchQuery::from("unifi".to_string());
-        let subscription_last = Subscription { query_hash: search_query_last.hash, chat_id: 42 };
+        // Search queries:
+        let search_query_1 = SearchQuery::from("tado".to_string());
+        let search_query_2 = SearchQuery::from("unifi".to_string());
+
+        // Subscriptions:
+        let subscription_first = Subscription { query_hash: search_query_1.hash, chat_id: 42 };
+        let subscription_middle = Subscription { query_hash: search_query_2.hash, chat_id: 42 };
+        let subscription_last = Subscription { query_hash: search_query_2.hash, chat_id: 43 };
 
         // Setting up:
         {
             let connection = &mut *db.connection().await;
-            SearchQueries(connection).upsert(&search_query_first).await?;
+            SearchQueries(connection).upsert(&search_query_1).await?;
+            SearchQueries(connection).upsert(&search_query_2).await?;
             Subscriptions(connection).upsert(subscription_first).await?;
-            SearchQueries(connection).upsert(&search_query_last).await?;
+            Subscriptions(connection).upsert(subscription_middle).await?;
             Subscriptions(connection).upsert(subscription_last).await?;
         }
 
         // Test fetching the first entry:
         let actual_entry = db.first_subscription().await?.unwrap();
-        let expected_entry_first = (subscription_first, search_query_first);
-        let expected_entry_last = (subscription_last, search_query_last);
+        let expected_entry_first = (subscription_first, search_query_1);
+        let expected_entry_middle = (subscription_middle, search_query_2.clone());
+        let expected_entry_last = (subscription_last, search_query_2);
         assert_eq!(actual_entry, expected_entry_first);
 
         // Test fetching no entry above the last one:
@@ -153,11 +158,13 @@ mod tests {
         );
 
         // Test repeated reading:
-        let entries: Vec<_> = db.subscriptions().take(4).try_collect().await?;
+        let entries: Vec<_> = db.subscriptions().take(6).try_collect().await?;
         assert_eq!(entries[0].as_ref(), Some(&expected_entry_first));
-        assert_eq!(entries[1].as_ref(), Some(&expected_entry_last));
-        assert_eq!(entries[2].as_ref(), Some(&expected_entry_first));
-        assert_eq!(entries[3].as_ref(), Some(&expected_entry_last));
+        assert_eq!(entries[1].as_ref(), Some(&expected_entry_middle));
+        assert_eq!(entries[2].as_ref(), Some(&expected_entry_last));
+        assert_eq!(entries[3].as_ref(), Some(&expected_entry_first));
+        assert_eq!(entries[4].as_ref(), Some(&expected_entry_middle));
+        assert_eq!(entries[5].as_ref(), Some(&expected_entry_last));
 
         Ok(())
     }

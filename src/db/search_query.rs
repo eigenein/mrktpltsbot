@@ -4,7 +4,7 @@ use sqlx::{FromRow, SqliteConnection};
 use crate::prelude::*;
 
 /// User's search query.
-#[derive(Debug, PartialEq, Eq, FromRow)]
+#[derive(Clone, Debug, PartialEq, Eq, FromRow)]
 pub struct SearchQuery {
     pub text: String,
 
