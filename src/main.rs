@@ -24,8 +24,12 @@ mod serde;
 mod telegram;
 
 fn main() -> Result {
+    let dotenv_result = dotenvy::dotenv();
     let cli = Args::parse();
     let _tracing_guards = logging::init(cli.sentry_dsn.as_deref())?;
+    if let Err(error) = dotenv_result {
+        warn!("Could not load `.env`: {error:#}");
+    }
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?

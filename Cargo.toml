@@ -9,7 +9,7 @@ license-file = "LICENSE"
 publish = true
 readme = "README.md"
 repository = "https://github.com/eigenein/mrktpltsbot"
-version = "2.0.0-alpha.2"
+version = "2.0.0-alpha.3"
 rust-version = "1.82"
 
 [badges]
@@ -43,7 +43,7 @@ backoff = { version = "0.4.0" }
 base64-url = "3.0.0"
 bon = "2.3.0"
 chrono = "0.4.38"
-clap = { version = "4.5.20", features = ["cargo", "derive", "env"] }
+clap = { version = "4.5.20", features = ["cargo", "derive", "env", "unicode"] }
 dotenvy = "0.15.7"
 futures = { version = "0.3.31", default-features = false }
 maud = "0.26.0"
