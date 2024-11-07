@@ -1,3 +1,5 @@
+mod item;
+pub mod notification;
 pub mod search_query;
 pub mod subscription;
 
@@ -57,6 +59,7 @@ impl Db {
         })
     }
 
+    #[instrument(skip_all, fields(min_hash = min_hash))]
     async fn next_subscription(
         &self,
         min_hash: i64,

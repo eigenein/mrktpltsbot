@@ -31,11 +31,11 @@ impl From<String> for SearchQuery {
 pub struct SearchQueries<'a>(pub &'a mut SqliteConnection);
 
 impl<'a> SearchQueries<'a> {
+    #[instrument(skip_all, fields(text = query.text, hash = query.hash))]
     pub async fn upsert(&mut self, query: &SearchQuery) -> Result {
-        sqlx::query(
-            // language=sqlite
-            "INSERT INTO search_queries (hash, text) VALUES (?1, ?2) ON CONFLICT DO UPDATE SET text = ?2",
-        )
+        // language=sql
+        const QUERY: &str = "INSERT INTO search_queries (hash, text) VALUES (?1, ?2) ON CONFLICT DO UPDATE SET text = ?2";
+        sqlx::query(QUERY)
             .bind(query.hash)
             .bind(&query.text)
             .execute(&mut *self.0)
