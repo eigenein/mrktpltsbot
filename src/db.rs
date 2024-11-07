@@ -125,14 +125,14 @@ mod tests {
     async fn test_into_subscriptions_ok() -> Result {
         let db = Db::try_new(Path::new(":memory:")).await?;
 
-        // Search queries:
+        // Search queries, ordered by the hash for convenience:
         let search_query_1 = SearchQuery::from("tado".to_string());
         let search_query_2 = SearchQuery::from("unifi".to_string());
 
-        // Subscriptions:
-        let subscription_first = Subscription { query_hash: search_query_1.hash, chat_id: 42 };
-        let subscription_middle = Subscription { query_hash: search_query_2.hash, chat_id: 42 };
-        let subscription_last = Subscription { query_hash: search_query_2.hash, chat_id: 43 };
+        // Subscriptions, the ordering matches the primary key and the queries:
+        let subscription_first = Subscription { chat_id: 42, query_hash: search_query_1.hash };
+        let subscription_middle = Subscription { chat_id: 42, query_hash: search_query_2.hash };
+        let subscription_last = Subscription { chat_id: 43, query_hash: search_query_2.hash };
 
         // Setting up:
         {
@@ -144,12 +144,13 @@ mod tests {
             Subscriptions(connection).upsert(subscription_last).await?;
         }
 
-        // Test fetching the first entry:
-        let actual_entry = db.first_subscription().await?.unwrap();
+        // Expected value shortcuts:
         let expected_entry_first = (subscription_first, search_query_1);
         let expected_entry_middle = (subscription_middle, search_query_2.clone());
         let expected_entry_last = (subscription_last, search_query_2);
-        assert_eq!(actual_entry, expected_entry_first);
+
+        // Test the first entry:
+        assert_eq!(db.first_subscription().await?.unwrap(), expected_entry_first);
 
         // Test fetching no entry above the last one:
         assert!(
