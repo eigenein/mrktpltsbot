@@ -4,6 +4,7 @@ use bon::bon;
 use serde::Serialize;
 
 use crate::{
+    db::notification::Notification,
     marktplaats::listing::Picture,
     prelude::*,
     telegram::{
@@ -17,6 +18,9 @@ use crate::{
 pub struct Reaction<'a> {
     /// Methods to execute on Telegram to produce the reaction.
     pub methods: Vec<ReactionMethod<'a>>,
+
+    /// Notification to upsert upon successful reaction.
+    pub notification: Option<Notification>,
 }
 
 impl<'a> Reaction<'a> {
@@ -37,6 +41,7 @@ impl<'a> From<ReactionMethod<'a>> for Reaction<'a> {
     fn from(method: ReactionMethod<'a>) -> Self {
         Self {
             methods: vec![method],
+            notification: None,
         }
     }
 }
@@ -44,6 +49,7 @@ impl<'a> From<ReactionMethod<'a>> for Reaction<'a> {
 impl<'a> From<Vec<SendMessage<'a>>> for Reaction<'a> {
     fn from(send_messages: Vec<SendMessage<'a>>) -> Self {
         Self {
+            notification: None,
             methods: send_messages
                 .into_iter()
                 .map(ReactionMethod::Message)

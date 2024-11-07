@@ -137,7 +137,7 @@ impl<'s> Reactor<'s> {
         if let Some(listing) = listings.inner.pop() {
             let description = render::listing_description()
                 .listing(&listing)
-                .search_query(&query)
+                .search_query(&query.text)
                 .links(&[subscribe_link])
                 .render();
             Ok(ReactionMethod::from_listing()

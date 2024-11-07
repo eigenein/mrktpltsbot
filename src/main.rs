@@ -6,10 +6,10 @@ use futures::TryStreamExt;
 use crate::{
     cli::Args,
     client::Client,
-    db::Db,
+    db::{Db, notification::Notifications},
     marktplaats::Marktplaats,
     prelude::*,
-    telegram::Telegram,
+    telegram::{Telegram, reaction::Reaction},
 };
 
 mod cli;
@@ -54,17 +54,28 @@ async fn async_main(cli: Args) -> Result {
     let marktplaats_reactor = marktplaats::bot::Reactor::builder()
         .db(&db)
         .marktplaats(&marktplaats)
-        .crawl_interval(Duration::from_secs(cli.marktplaats_crawl_interval_secs))
+        .crawl_interval(Duration::from_secs(cli.marktplaats.crawl_interval_secs))
         .command_builder(&command_builder)
+        .search_limit(cli.marktplaats.search_limit)
         .build();
     let marktplaats_reactions = marktplaats_reactor.run();
 
-    // Now, merge all the reactions and send them:
+    // Now, merge all the reactions and execute them:
     tokio_stream::StreamExt::merge(telegram_reactions, marktplaats_reactions)
-        .try_for_each(|reaction| {
-            let telegram = &telegram;
-            async move { reaction.react_to(telegram).await }
-        })
+        .try_for_each(|reaction| execute_reaction(reaction, &telegram, &db))
         .await
         .context("reactor error")
+}
+
+async fn execute_reaction(reaction: Reaction<'_>, telegram: &Telegram, db: &Db) -> Result {
+    reaction
+        .react_to(telegram)
+        .await
+        .context("failed to execute the reaction")?;
+    if let Some(notification) = &reaction.notification {
+        Notifications(&mut *db.connection().await)
+            .upsert(notification)
+            .await?;
+    }
+    Ok(())
 }

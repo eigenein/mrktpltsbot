@@ -61,13 +61,13 @@ pub fn simple_message<M1: Render, M2: Render>(markup: M1, links: &[Link<M2>]) ->
 #[builder(finish_fn = render)]
 pub fn listing_description<M: Render>(
     listing: &Listing,
-    search_query: &SearchQuery,
+    search_query: &str,
     links: &[Link<M>],
 ) -> String {
     let markup = html! {
         strong { a href=(listing.https_url()) { (listing.title) } }
         "\n"
-        em { (search_query.text) }
+        em { (search_query) }
         @for links in links {
             (DELIMITER)
             (links)

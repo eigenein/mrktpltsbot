@@ -14,12 +14,22 @@ pub struct Args {
     #[clap(long, env = "DB", default_value = "mrktpltsbot.sqlite3")]
     pub db: PathBuf,
 
-    /// Crawling interval, in seconds.
-    #[clap(long, env = "MARKTPLAATS_CRAWL_INTERVAL_SECS", default_value = "60")]
-    pub marktplaats_crawl_interval_secs: u64,
-
     #[command(flatten)]
     pub telegram: TelegramArgs,
+
+    #[command(flatten)]
+    pub marktplaats: MarktplaatsArgs,
+}
+
+#[derive(Parser)]
+pub struct MarktplaatsArgs {
+    /// Crawling interval, in seconds.
+    #[clap(long, env = "MARKTPLAATS_CRAWL_INTERVAL_SECS", default_value = "60")]
+    pub crawl_interval_secs: u64,
+
+    /// Limit of Marktplaats search results per query.
+    #[clap(long, env = "MARKTPLAATS_SEARCH_LIMIT", default_value = "30")]
+    pub search_limit: u32,
 }
 
 #[derive(Parser)]
