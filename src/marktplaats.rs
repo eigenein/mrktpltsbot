@@ -73,6 +73,10 @@ impl<'a> SearchRequest<'a> {
             .sort_order(SortOrder::Decreasing)
             .build()
     }
+
+    pub async fn call_on(&self, marktplaats: &Marktplaats) -> Result<Listings> {
+        marktplaats.search(self).await
+    }
 }
 
 #[must_use]

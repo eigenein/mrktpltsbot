@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use anyhow::Context;
 use sqlx::{FromRow, SqliteConnection};
 
@@ -21,10 +19,7 @@ pub struct SearchQuery {
 impl From<String> for SearchQuery {
     #[expect(clippy::cast_possible_wrap)]
     fn from(text: String) -> Self {
-        Self {
-            hash: seahash::hash(text.as_bytes()) as i64,
-            text,
-        }
+        Self { hash: seahash::hash(text.as_bytes()) as i64, text }
     }
 }
 
@@ -48,6 +43,8 @@ impl<'a> SearchQueries<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
     use crate::db::Db;
 

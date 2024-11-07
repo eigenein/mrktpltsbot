@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use clap::Parser;
-use futures::TryStreamExt;
+use futures::{StreamExt, TryFutureExt};
 
 use crate::{
     cli::Args,
@@ -39,9 +39,7 @@ async fn async_main(cli: Args) -> Result {
     let command_builder = telegram::bot::try_init(&telegram).await?;
 
     // Handle Telegram updates:
-    let telegram_updates = telegram
-        .clone()
-        .into_updates(0, cli.telegram.poll_timeout_secs);
+    let telegram_updates = telegram.clone().into_updates(0, cli.telegram.poll_timeout_secs);
     let telegram_reactor = telegram::bot::Reactor::builder()
         .authorized_chat_ids(cli.telegram.authorized_chat_ids.into_iter().collect())
         .db(&db)
@@ -62,20 +60,30 @@ async fn async_main(cli: Args) -> Result {
 
     // Now, merge all the reactions and execute them:
     tokio_stream::StreamExt::merge(telegram_reactions, marktplaats_reactions)
-        .try_for_each(|reaction| execute_reaction(reaction, &telegram, &db))
-        .await
-        .context("reactor error")
+        .filter_map(|result| async {
+            // Log and skip error to keep the reactor going.
+            result.inspect_err(|error| error!("Reactor error: {error:#}")).ok()
+        })
+        .for_each(|reaction| execute_reaction(reaction, &telegram, &db))
+        .await;
+
+    unreachable!()
 }
 
-async fn execute_reaction(reaction: Reaction<'_>, telegram: &Telegram, db: &Db) -> Result {
-    reaction
+/// Execute the reaction.
+///
+/// This is infallible since it must not stop the entire reactor.
+async fn execute_reaction(reaction: Reaction<'_>, telegram: &Telegram, db: &Db) {
+    let result = reaction
         .react_to(telegram)
-        .await
-        .context("failed to execute the reaction")?;
-    if let Some(notification) = &reaction.notification {
-        Notifications(&mut *db.connection().await)
-            .upsert(notification)
-            .await?;
+        .and_then(|()| async {
+            if let Some(notification) = &reaction.notification {
+                Notifications(&mut *db.connection().await).upsert(notification).await?;
+            }
+            Ok(())
+        })
+        .await;
+    if let Err(error) = result {
+        error!("Failed to execute the reaction: {error:#}");
     }
-    Ok(())
 }

@@ -24,27 +24,39 @@ pub struct Args {
 #[derive(Parser)]
 pub struct MarktplaatsArgs {
     /// Crawling interval, in seconds.
-    #[clap(long, env = "MARKTPLAATS_CRAWL_INTERVAL_SECS", default_value = "60")]
+    #[clap(
+        long = "marktplaats-crawl-interval-secs",
+        env = "MARKTPLAATS_CRAWL_INTERVAL_SECS",
+        default_value = "60"
+    )]
     pub crawl_interval_secs: u64,
 
     /// Limit of Marktplaats search results per query.
-    #[clap(long, env = "MARKTPLAATS_SEARCH_LIMIT", default_value = "30")]
+    #[clap(
+        long = "marktplaats-search-limit",
+        env = "MARKTPLAATS_SEARCH_LIMIT",
+        default_value = "30"
+    )]
     pub search_limit: u32,
 }
 
 #[derive(Parser)]
 pub struct TelegramArgs {
     /// Telegram bot token: <https://core.telegram.org/bots/api#authorizing-your-bot>.
-    #[clap(long, env = "TELEGRAM_BOT_TOKEN")]
+    #[clap(long = "telegram-bot-token", env = "TELEGRAM_BOT_TOKEN")]
     pub bot_token: String,
 
     /// Timeout for Telegram long polling, in seconds.
-    #[clap(long, env = "TELEGRAM_POLL_TIMEOUT_SECS", default_value = "60")]
+    #[clap(
+        long = "telegram-poll-timeout-secs",
+        env = "TELEGRAM_POLL_TIMEOUT_SECS",
+        default_value = "60"
+    )]
     pub poll_timeout_secs: u64,
 
     /// Authorize chat ID to use the bot.
     #[clap(
-        long = "authorize-chat-id",
+        long = "telegram-authorize-chat-id",
         env = "TELEGRAM_AUTHORIZED_CHAT_IDS",
         value_delimiter = ',',
         alias = "chat-id"

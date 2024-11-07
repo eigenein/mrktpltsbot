@@ -1,4 +1,4 @@
-mod item;
+pub mod item;
 pub mod notification;
 pub mod search_query;
 pub mod subscription;
@@ -35,10 +35,7 @@ impl Db {
             .connect()
             .await
             .with_context(|| format!("failed to open database `{path:?}`"))?;
-        MIGRATOR
-            .run(&mut connection)
-            .await
-            .context("failed to migrate the database")?;
+        MIGRATOR.run(&mut connection).await.context("failed to migrate the database")?;
         info!("The database is ready");
         Ok(Self(Mutex::new(connection)))
     }
@@ -77,10 +74,7 @@ impl Db {
             .await
             .with_context(|| format!("failed to fetch a subscription starting at {min_hash}"))?;
         match row {
-            Some(row) => Ok(Some((
-                Subscription::from_row(&row)?,
-                SearchQuery::from_row(&row)?,
-            ))),
+            Some(row) => Ok(Some((Subscription::from_row(&row)?, SearchQuery::from_row(&row)?))),
             None => Ok(None),
         }
     }
@@ -101,16 +95,13 @@ mod tests {
 
         // Initial rows:
         let search_query = SearchQuery::from("unifi".to_string());
-        let subscription = Subscription {
-            query_hash: search_query.hash,
-            chat_id: 42,
-        };
+        let subscription = Subscription { query_hash: search_query.hash, chat_id: 42 };
 
         // Setting up:
         {
             let connection = &mut *db.connection().await;
             SearchQueries(connection).upsert(&search_query).await?;
-            Subscriptions(connection).upsert(&subscription).await?;
+            Subscriptions(connection).upsert(subscription).await?;
         }
 
         // Test fetching the entry:

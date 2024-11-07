@@ -39,10 +39,7 @@ impl<'a> Reaction<'a> {
 
 impl<'a> From<ReactionMethod<'a>> for Reaction<'a> {
     fn from(method: ReactionMethod<'a>) -> Self {
-        Self {
-            methods: vec![method],
-            notification: None,
-        }
+        Self { methods: vec![method], notification: None }
     }
 }
 
@@ -50,10 +47,7 @@ impl<'a> From<Vec<SendMessage<'a>>> for Reaction<'a> {
     fn from(send_messages: Vec<SendMessage<'a>>) -> Self {
         Self {
             notification: None,
-            methods: send_messages
-                .into_iter()
-                .map(ReactionMethod::Message)
-                .collect(),
+            methods: send_messages.into_iter().map(ReactionMethod::Message).collect(),
         }
     }
 }

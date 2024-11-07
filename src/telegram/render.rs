@@ -7,7 +7,6 @@ use maud::{Markup, PreEscaped, Render, html};
 use url::Url;
 
 use crate::{
-    db::search_query::SearchQuery,
     marktplaats::listing::{
         Attribute,
         Condition,
@@ -62,7 +61,7 @@ pub fn simple_message<M1: Render, M2: Render>(markup: M1, links: &[Link<M2>]) ->
 pub fn listing_description<M: Render>(
     listing: &Listing,
     search_query: &str,
-    links: &[Link<M>],
+    links: &[&Link<M>],
 ) -> String {
     let markup = html! {
         strong { a href=(listing.https_url()) { (listing.title) } }
@@ -78,7 +77,7 @@ pub fn listing_description<M: Render>(
             (attribute)
         }
         "\n\n"
-        blockquote expandable { (listing.description()) }
+        blockquote { (listing.description()) }
         "\n\n"
         (listing.seller)
         @if listing.location.city_name.is_some() {

@@ -39,10 +39,7 @@ impl<'s> Reactor<'s> {
         &'s self,
         updates: impl Stream<Item = Result<Update>> + 's,
     ) -> impl Stream<Item = Result<Reaction<'static>>> + 's {
-        info!(
-            me = self.command_builder.url().as_str(),
-            "Running Telegram reactor…",
-        );
+        info!(me = self.command_builder.url().as_str(), "Running Telegram reactor…",);
         updates
             .inspect_ok(|update| info!(update.id, "Received update"))
             .try_filter_map(|update| async { Ok(Option::<Message>::from(update)) })
@@ -108,8 +105,7 @@ impl<'s> Reactor<'s> {
         if text.starts_with('/') {
             self.on_command(text, chat_id, reply_parameters).await
         } else {
-            self.on_search(text.to_lowercase(), chat_id, reply_parameters)
-                .await
+            self.on_search(text.to_lowercase(), chat_id, reply_parameters).await
         }
     }
     /// Handle the search request from Telegram.
@@ -122,14 +118,11 @@ impl<'s> Reactor<'s> {
         chat_id: i64,
         reply_parameters: ReplyParameters,
     ) -> Result<Reaction<'static>> {
+        let mut listings = SearchRequest::standard(&query, 1).call_on(self.marktplaats).await?;
         let query = SearchQuery::from(query);
-        let request = SearchRequest::standard(&query.text, 1);
-        let mut listings = self.marktplaats.search(&request).await?;
         info!(query.hash, n_listings = listings.inner.len());
 
-        SearchQueries(&mut *self.db.connection().await)
-            .upsert(&query)
-            .await?;
+        SearchQueries(&mut *self.db.connection().await).upsert(&query).await?;
 
         // We need the subscribe command anyway, even if no listings were found.
         let subscribe_link = self.command_builder.subscribe_link(query.hash);
@@ -138,7 +131,7 @@ impl<'s> Reactor<'s> {
             let description = render::listing_description()
                 .listing(&listing)
                 .search_query(&query.text)
-                .links(&[subscribe_link])
+                .links(&[&subscribe_link])
                 .render();
             Ok(ReactionMethod::from_listing()
                 .chat_id(Cow::Owned(chat_id.into()))
@@ -175,10 +168,7 @@ impl<'s> Reactor<'s> {
             // Just an initial greeting.
             let chat_id: Cow<'_, ChatId> = Cow::Owned(ChatId::Integer(chat_id));
             let methods = vec![
-                SendMessage::builder()
-                    .chat_id(chat_id.clone())
-                    .text("👋")
-                    .build(),
+                SendMessage::builder().chat_id(chat_id.clone()).text("👋").build(),
                 SendMessage::builder()
                     .chat_id(chat_id)
                     .text("Just send me a search query to start")
@@ -194,33 +184,28 @@ impl<'s> Reactor<'s> {
             let mut methods: Vec<SendMessage> = Vec::new();
 
             if let Some(subscription_command) = command.subscription {
-                let subscription = Subscription {
-                    query_hash: subscription_command.query_hash,
-                    chat_id,
-                };
+                let subscription =
+                    Subscription { query_hash: subscription_command.query_hash, chat_id };
                 let connection = &mut *self.db.connection().await;
                 let mut subscriptions = Subscriptions(connection);
 
                 match SubscriptionAction::try_from(subscription_command.action) {
                     Ok(SubscriptionAction::Subscribe) => {
                         info!(subscription.query_hash, "Subscribing");
-                        subscriptions.upsert(&subscription).await?;
-                        let unsubscribe_link = self
-                            .command_builder
-                            .unsubscribe_link(subscription.query_hash);
+                        subscriptions.upsert(subscription).await?;
+                        let unsubscribe_link =
+                            self.command_builder.unsubscribe_link(subscription.query_hash);
                         let text = render::simple_message()
                             .markup("You are now subscribed")
                             .links(&[unsubscribe_link])
                             .render();
-                        methods.push(SendMessage::quick_html(
-                            Cow::Owned(chat_id.into()),
-                            text.into(),
-                        ));
+                        methods
+                            .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()));
                     }
 
                     Ok(SubscriptionAction::Unsubscribe) => {
                         info!(subscription.query_hash, "Unsubscribing");
-                        subscriptions.delete(&subscription).await?;
+                        subscriptions.delete(subscription).await?;
                         let subscribe_link = self
                             .command_builder
                             .link()
@@ -231,10 +216,8 @@ impl<'s> Reactor<'s> {
                             .markup("You are now unsubscribed")
                             .links(&[subscribe_link])
                             .render();
-                        methods.push(SendMessage::quick_html(
-                            Cow::Owned(chat_id.into()),
-                            text.into(),
-                        ));
+                        methods
+                            .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()));
                     }
 
                     _ => {} // TODO: technically, I should return a message that the action is no longer supported

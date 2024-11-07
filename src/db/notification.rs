@@ -58,26 +58,17 @@ mod tests {
         let db = Db::try_new(Path::new(":memory:")).await?;
         let mut connection = db.connection().await;
 
-        let item = Item {
-            id: "m42".to_string(),
-            updated_at: Utc::now(),
-        };
-        Items(&mut connection).upsert(&item).await?;
+        let item = Item { id: "m42", updated_at: Utc::now() };
+        Items(&mut connection).upsert(item).await?;
 
-        let notification_1 = Notification {
-            item_id: "m42".to_string(),
-            chat_id: 42,
-        };
+        let notification_1 = Notification { item_id: "m42".to_string(), chat_id: 42 };
 
         let mut notifications = Notifications(&mut connection);
 
         notifications.upsert(&notification_1).await?;
         assert!(notifications.exists(&notification_1).await?);
 
-        let notification_2 = Notification {
-            item_id: "m42".to_string(),
-            chat_id: 43,
-        };
+        let notification_2 = Notification { item_id: "m42".to_string(), chat_id: 43 };
         assert!(!notifications.exists(&notification_2).await?);
 
         Ok(())
