@@ -31,8 +31,7 @@ impl CommandBuilder {
     #[builder(finish_fn = build)]
     pub fn link<C: Render>(&self, content: C, payload: &CommandPayload) -> Link<C> {
         let mut url = self.0.clone();
-        url.query_pairs_mut()
-            .append_pair("start", &payload.to_base64());
+        url.query_pairs_mut().append_pair("start", &payload.to_base64());
         Link::builder().content(content).url(url).build()
     }
 
@@ -41,6 +40,14 @@ impl CommandBuilder {
         self.link()
             .payload(&CommandPayload::subscribe_to(to_query_hash))
             .content("Subscribe")
+            .build()
+    }
+
+    /// Produce a standard «Re-subscribe» link.
+    pub fn resubscribe_link(&self, to_query_hash: i64) -> Link<&'static str> {
+        self.link()
+            .payload(&CommandPayload::subscribe_to(to_query_hash))
+            .content("Re-subscribe")
             .build()
     }
 
@@ -73,15 +80,11 @@ impl CommandPayload {
     }
 
     pub const fn subscribe_to(query_hash: i64) -> Self {
-        Self {
-            subscription: Some(SubscriptionCommand::subscribe_to(query_hash)),
-        }
+        Self { subscription: Some(SubscriptionCommand::subscribe_to(query_hash)) }
     }
 
     pub const fn unsubscribe_from(query_hash: i64) -> Self {
-        Self {
-            subscription: Some(SubscriptionCommand::unsubscribe_from(query_hash)),
-        }
+        Self { subscription: Some(SubscriptionCommand::unsubscribe_from(query_hash)) }
     }
 }
 
@@ -96,17 +99,11 @@ pub struct SubscriptionCommand {
 
 impl SubscriptionCommand {
     pub const fn subscribe_to(query_hash: i64) -> Self {
-        Self {
-            query_hash,
-            action: SubscriptionAction::Subscribe as i32,
-        }
+        Self { query_hash, action: SubscriptionAction::Subscribe as i32 }
     }
 
     pub const fn unsubscribe_from(query_hash: i64) -> Self {
-        Self {
-            query_hash,
-            action: SubscriptionAction::Unsubscribe as i32,
-        }
+        Self { query_hash, action: SubscriptionAction::Unsubscribe as i32 }
     }
 }
 
@@ -142,9 +139,7 @@ mod tests {
         let payload = CommandPayload::from_base64("GgsJ_5xfEFkYbu0QAQ")?;
         assert_eq!(
             payload.subscription,
-            Some(SubscriptionCommand::subscribe_to(
-                -1_338_105_268_476_601_089
-            ))
+            Some(SubscriptionCommand::subscribe_to(-1_338_105_268_476_601_089))
         );
         Ok(())
     }

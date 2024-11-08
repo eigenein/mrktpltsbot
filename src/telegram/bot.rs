@@ -19,6 +19,7 @@ use crate::{
         objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters, Update},
         reaction::{Reaction, ReactionMethod},
         render,
+        render::ManageSearchQuery,
     },
 };
 
@@ -128,11 +129,10 @@ impl<'s> Reactor<'s> {
         let subscribe_link = self.command_builder.subscribe_link(query.hash);
 
         if let Some(listing) = listings.inner.pop() {
-            let description = render::listing_description()
-                .listing(&listing)
-                .search_query(&query.text)
-                .links(&[&subscribe_link])
-                .render();
+            let description = render::listing_description(
+                &listing,
+                &ManageSearchQuery::new(&query.text, &[&subscribe_link]),
+            );
             Ok(ReactionMethod::from_listing()
                 .chat_id(Cow::Owned(chat_id.into()))
                 .text(description)
@@ -142,10 +142,10 @@ impl<'s> Reactor<'s> {
                 .build()
                 .into())
         } else {
-            let text = render::simple_message()
-                .markup("There are no items matching the search query. Try a different query or subscribe anyway to wait for them to appear")
-                .links(&[subscribe_link])
-                .render();
+            let text = render::simple_message(
+                "There are no items matching the search query. Try a different query or subscribe anyway to wait for them to appear",
+                &[subscribe_link],
+            );
             Ok(SendMessage::builder()
                 .chat_id(Cow::Owned(chat_id.into()))
                 .text(text)
@@ -195,10 +195,8 @@ impl<'s> Reactor<'s> {
                         subscriptions.upsert(subscription).await?;
                         let unsubscribe_link =
                             self.command_builder.unsubscribe_link(subscription.query_hash);
-                        let text = render::simple_message()
-                            .markup("You are now subscribed")
-                            .links(&[unsubscribe_link])
-                            .render();
+                        let text =
+                            render::simple_message("You are now subscribed", &[unsubscribe_link]);
                         methods
                             .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()));
                     }
@@ -206,16 +204,9 @@ impl<'s> Reactor<'s> {
                     Ok(SubscriptionAction::Unsubscribe) => {
                         info!(subscription.query_hash, "Unsubscribing");
                         subscriptions.delete(subscription).await?;
-                        let subscribe_link = self
+                        let text = render::simple_message("You are now unsubscribed", &[self
                             .command_builder
-                            .link()
-                            .content("Re-subscribe")
-                            .payload(&CommandPayload::subscribe_to(subscription.query_hash))
-                            .build();
-                        let text = render::simple_message()
-                            .markup("You are now unsubscribed")
-                            .links(&[subscribe_link])
-                            .render();
+                            .resubscribe_link(subscription.query_hash)]);
                         methods
                             .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()));
                     }

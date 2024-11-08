@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use bon::{Builder, builder};
+use bon::Builder;
 use maud::{Markup, PreEscaped, Render, html};
 use url::Url;
 
@@ -44,7 +44,6 @@ pub fn unauthorized(chat_id: &ChatId) -> Markup {
 }
 
 /// Render a simple message with links.
-#[builder(finish_fn = render)]
 pub fn simple_message<M1: Render, M2: Render>(markup: M1, links: &[Link<M2>]) -> String {
     let markup = html! {
         (markup)
@@ -57,20 +56,14 @@ pub fn simple_message<M1: Render, M2: Render>(markup: M1, links: &[Link<M2>]) ->
 }
 
 /// Render the listing description.
-#[builder(finish_fn = render)]
 pub fn listing_description<M: Render>(
     listing: &Listing,
-    search_query: &str,
-    links: &[&Link<M>],
+    manage_search_query: &ManageSearchQuery<'_, M>,
 ) -> String {
     let markup = html! {
         strong { a href=(listing.https_url()) { (listing.title) } }
         "\n"
-        em { (search_query) }
-        @for links in links {
-            (DELIMITER)
-            (links)
-        }
+        (manage_search_query)
         "\n\n"
         (listing.price)
         @for attribute in &listing.attributes {
@@ -198,6 +191,30 @@ impl Render for Delivery {
                 Self::CollectionOnly => "🚶 collection",
                 Self::ShippingOnly => "📦 shipping",
                 Self::CollectionOrShipping => { (Self::CollectionOnly) (DELIMITER) (Self::ShippingOnly) }
+            }
+        }
+    }
+}
+
+/// Search query as a text together with the management links.
+#[derive(Copy, Clone)]
+pub struct ManageSearchQuery<'a, C> {
+    search_query: &'a str,
+    links: &'a [&'a Link<C>],
+}
+
+impl<'a, C> ManageSearchQuery<'a, C> {
+    pub const fn new(search_query: &'a str, links: &'a [&'a Link<C>]) -> Self {
+        Self { search_query, links }
+    }
+}
+
+impl<'a, C: Render> Render for ManageSearchQuery<'a, C> {
+    fn render(&self) -> Markup {
+        html! {
+            em { (self.search_query) }
+            @for links in self.links {
+                (DELIMITER) (links)
             }
         }
     }

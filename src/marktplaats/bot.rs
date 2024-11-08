@@ -19,6 +19,7 @@ use crate::{
         objects::ParseMode,
         reaction::{Reaction, ReactionMethod},
         render,
+        render::ManageSearchQuery,
     },
 };
 
@@ -83,11 +84,10 @@ impl<'s> Reactor<'s> {
                     return Ok(None);
                 }
                 info!(item_id = notification.item_id, "Reacting");
-                let description = render::listing_description()
-                    .listing(&listing)
-                    .search_query(text)
-                    .links(&[unsubscribe_link])
-                    .render();
+                let description = render::listing_description(
+                    &listing,
+                    &ManageSearchQuery::new(text, &[unsubscribe_link]),
+                );
                 let reaction_method = ReactionMethod::from_listing()
                     .chat_id(Cow::Owned(subscription.chat_id.into()))
                     .text(description)
