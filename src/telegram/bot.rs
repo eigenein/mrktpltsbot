@@ -15,8 +15,16 @@ use crate::{
     telegram::{
         Telegram,
         commands::{CommandBuilder, CommandPayload, SubscriptionAction},
-        methods::{GetMe, Method, SendMessage, SetMyDescription},
-        objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters, Update},
+        methods::{GetMe, Method, SendMessage, SetMyCommands, SetMyDescription},
+        objects::{
+            BotCommand,
+            ChatId,
+            LinkPreviewOptions,
+            Message,
+            ParseMode,
+            ReplyParameters,
+            Update,
+        },
         reaction::{Reaction, ReactionMethod},
         render,
         render::{DELIMITER, ManageSearchQuery},
@@ -177,6 +185,29 @@ impl<'s> Reactor<'s> {
             return Ok(methods.into());
         }
 
+        if text == "/manage" {
+            let subscriptions = self.db.subscriptions_of(chat_id).await?;
+            let markup = html! {
+                @if subscriptions.is_empty() {
+                    "You do not have any subscriptions at the moment"
+                } @else {
+                    "Here are your subscriptions:\n"
+                    @for (subscription, search_query) in subscriptions {
+                        @let unsubscribe_link = self.command_builder.unsubscribe_link(subscription.query_hash);;
+                        "\n"
+                        (ManageSearchQuery::new(&search_query.text, &[&unsubscribe_link]))
+                    }
+                }
+            };
+            return Ok(SendMessage::builder()
+                .chat_id(Cow::Owned(chat_id.into()))
+                .text(markup.render().into_string())
+                .parse_mode(ParseMode::Html)
+                .link_preview_options(LinkPreviewOptions::DISABLED)
+                .build()
+                .into());
+        }
+
         if let Some(payload) = text.strip_prefix("/start ") {
             // Command with a payload.
             let command = CommandPayload::from_base64(payload)?;
@@ -254,6 +285,15 @@ pub async fn try_init(telegram: &Telegram) -> Result<CommandBuilder> {
         .build()
         .call_on(telegram)
         .await
-        .context("failed to set the bot description")?;
+        .context("failed to set the bot's description")?;
+    SetMyCommands::builder()
+        .commands(&[&BotCommand::builder()
+            .command("manage")
+            .description("List and manage your subscriptions")
+            .build()])
+        .build()
+        .call_on(telegram)
+        .await
+        .context("failed to set the bot's commands")?;
     CommandBuilder::new(&me)
 }

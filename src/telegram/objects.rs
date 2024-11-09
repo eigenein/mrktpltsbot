@@ -1,6 +1,9 @@
 #![expect(dead_code)]
 
-use std::fmt::{Display, Formatter};
+use std::{
+    borrow::Cow,
+    fmt::{Display, Formatter},
+};
 
 use bon::Builder;
 use serde::{Deserialize, Serialize};
@@ -150,11 +153,7 @@ pub struct LinkPreviewOptions {
 }
 
 impl LinkPreviewOptions {
-    pub const DISABLED: Self = Self {
-        is_disabled: Some(true),
-        url: None,
-        show_above_text: None,
-    };
+    pub const DISABLED: Self = Self { is_disabled: Some(true), url: None, show_above_text: None };
 }
 
 /// Describes [reply parameters][1] for the message that is being sent.
@@ -190,9 +189,7 @@ pub struct InlineKeyboardMarkup<'a> {
 
 impl<'a> From<InlineKeyboardButton<'a>> for InlineKeyboardMarkup<'a> {
     fn from(button: InlineKeyboardButton<'a>) -> Self {
-        Self {
-            inline_keyboard: vec![vec![button]],
-        }
+        Self { inline_keyboard: vec![vec![button]] }
     }
 }
 
@@ -219,4 +216,43 @@ pub enum InlineKeyboardButtonAction {
     /// [1]: https://core.telegram.org/bots/api#callbackquery
     #[serde(rename = "callback_data")]
     CallbackData(String),
+}
+
+/// This object represents a [bot command][1].
+///
+/// [1]: https://core.telegram.org/bots/api#botcommand
+#[derive(Builder, Serialize)]
+#[must_use]
+pub struct BotCommand<'a> {
+    /// Text of the command; 1-32 characters.
+    /// Can contain only lowercase English letters, digits and underscores.
+    pub command: &'a str,
+
+    /// Description of the command; 1-256 characters.
+    pub description: &'a str,
+}
+
+#[derive(Serialize)]
+#[must_use]
+#[serde(tag = "type")]
+pub enum Media<'a> {
+    #[serde(rename = "photo")]
+    InputMediaPhoto(InputMediaPhoto<'a>),
+}
+
+#[derive(Builder, Serialize)]
+#[must_use]
+pub struct InputMediaPhoto<'a> {
+    #[builder(into)]
+    pub media: Cow<'a, str>,
+
+    #[builder(into)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub caption: Option<Cow<'a, str>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parse_mode: Option<ParseMode>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_caption_above_media: Option<bool>,
 }

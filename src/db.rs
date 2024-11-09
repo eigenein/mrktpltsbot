@@ -14,6 +14,7 @@ use sqlx::{
     migrate::Migrator,
     sqlite::SqliteConnectOptions,
 };
+use sqlx_sqlite::SqliteRow;
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::{
@@ -46,6 +47,25 @@ impl Db {
         self.0.lock().await
     }
 
+    pub async fn subscriptions_of(&self, chat_id: i64) -> Result<Vec<(Subscription, SearchQuery)>> {
+        // language=sql
+        const QUERY: &str = r"
+            SELECT search_queries.*, subscriptions.* FROM subscriptions
+            JOIN search_queries ON search_queries.hash = subscriptions.query_hash
+            WHERE subscriptions.chat_id = ?1
+            ORDER BY subscriptions.query_hash
+        ";
+
+        sqlx::query(QUERY)
+            .bind(chat_id)
+            .fetch_all(&mut *self.connection().await)
+            .await
+            .with_context(|| format!("failed to fetch subscriptions of chat #{chat_id}"))?
+            .into_iter()
+            .map(enriched_subscription_from_row)
+            .collect()
+    }
+
     /// Get an endless stream of subscriptions.
     ///
     /// - Yields [`Some`] while there are still rows in the table, and restarts when the end is reached.
@@ -76,14 +96,12 @@ impl Db {
             LIMIT 1
         ";
 
-        let row = sqlx::query(QUERY)
+        sqlx::query(QUERY)
             .fetch_optional(&mut *self.connection().await)
             .await
-            .context("failed to fetch the first subscription")?;
-        match row {
-            Some(row) => Ok(Some((Subscription::from_row(&row)?, SearchQuery::from_row(&row)?))),
-            None => Ok(None),
-        }
+            .context("failed to fetch the first subscription")?
+            .map(enriched_subscription_from_row)
+            .transpose()
     }
 
     #[instrument(skip_all, fields(query_hash = current.query_hash, chat_id = current.chat_id))]
@@ -100,17 +118,20 @@ impl Db {
             LIMIT 1
         ";
 
-        let row = sqlx::query(QUERY)
+        sqlx::query(QUERY)
             .bind(current.chat_id)
             .bind(current.query_hash)
             .fetch_optional(&mut *self.connection().await)
             .await
-            .context("failed to fetch the next subscription")?;
-        match row {
-            Some(row) => Ok(Some((Subscription::from_row(&row)?, SearchQuery::from_row(&row)?))),
-            None => Ok(None),
-        }
+            .context("failed to fetch the next subscription")?
+            .map(enriched_subscription_from_row)
+            .transpose()
     }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn enriched_subscription_from_row(row: SqliteRow) -> Result<(Subscription, SearchQuery)> {
+    Ok((Subscription::from_row(&row)?, SearchQuery::from_row(&row)?))
 }
 
 #[cfg(test)]
@@ -167,6 +188,12 @@ mod tests {
         assert_eq!(entries[3].as_ref(), Some(&expected_entry_first));
         assert_eq!(entries[4].as_ref(), Some(&expected_entry_middle));
         assert_eq!(entries[5].as_ref(), Some(&expected_entry_last));
+
+        // Test filtering by chat:
+        assert_eq!(db.subscriptions_of(subscription_first.chat_id).await?, &[
+            expected_entry_first,
+            expected_entry_middle,
+        ]);
 
         Ok(())
     }

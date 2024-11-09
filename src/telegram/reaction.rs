@@ -9,8 +9,8 @@ use crate::{
     prelude::*,
     telegram::{
         Telegram,
-        methods::{InputMediaPhoto, Media, Method, SendMediaGroup, SendMessage, SendPhoto},
-        objects::{ChatId, LinkPreviewOptions, ParseMode, ReplyParameters},
+        methods::{Method, SendMediaGroup, SendMessage, SendPhoto},
+        objects::{ChatId, InputMediaPhoto, LinkPreviewOptions, Media, ParseMode, ReplyParameters},
     },
 };
 

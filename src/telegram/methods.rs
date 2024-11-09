@@ -216,27 +216,26 @@ impl Method for SendMediaGroup<'_> {
     }
 }
 
-#[derive(Serialize)]
-#[must_use]
-#[serde(tag = "type")]
-pub enum Media<'a> {
-    #[serde(rename = "photo")]
-    InputMediaPhoto(InputMediaPhoto<'a>),
-}
-
+/// Use this method to [change the list of the bot's commands].
+///
+/// See [this manual][2] for more details about bot commands. Returns [`true`] on success.
+///
+/// [1]: https://core.telegram.org/bots/api#setmycommands
+/// [2]: https://core.telegram.org/bots/features#commands
 #[derive(Builder, Serialize)]
 #[must_use]
-pub struct InputMediaPhoto<'a> {
-    #[builder(into)]
-    pub media: Cow<'a, str>,
+pub struct SetMyCommands<'a> {
+    /// A JSON-serialized list of bot commands to be set as the list of the bot's commands.
+    ///
+    /// At most 100 commands can be specified.
+    #[serde(serialize_with = "as_inner_json")]
+    pub commands: &'a [&'a BotCommand<'a>],
+}
 
-    #[builder(into)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub caption: Option<Cow<'a, str>>,
+impl Method for SetMyCommands<'_> {
+    type Response = bool;
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parse_mode: Option<ParseMode>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub show_caption_above_media: Option<bool>,
+    fn name(&self) -> &'static str {
+        "setMyCommands"
+    }
 }

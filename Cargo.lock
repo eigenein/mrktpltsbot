@@ -1267,7 +1267,7 @@ dependencies = [
 
 [[package]]
 name = "mrktpltsbot"
-version = "2.0.0-alpha.4"
+version = "2.0.0-beta.1"
 dependencies = [
  "anyhow",
  "backoff",
