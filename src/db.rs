@@ -53,7 +53,7 @@ impl Db {
             SELECT search_queries.*, subscriptions.* FROM subscriptions
             JOIN search_queries ON search_queries.hash = subscriptions.query_hash
             WHERE subscriptions.chat_id = ?1
-            ORDER BY subscriptions.query_hash
+            ORDER BY search_queries.text
         ";
 
         sqlx::query(QUERY)
