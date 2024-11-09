@@ -27,6 +27,7 @@ static MIGRATOR: Migrator = sqlx::migrate!();
 pub struct Db(Mutex<SqliteConnection>);
 
 impl Db {
+    /// TODO: change `Path` into `AsRef<Path>`.
     #[instrument(skip_all, fields(path = ?path))]
     pub async fn try_new(path: &Path) -> Result<Self> {
         let mut connection = SqliteConnectOptions::new()

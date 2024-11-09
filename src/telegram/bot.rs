@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashSet};
 
 use bon::Builder;
 use futures::{Stream, TryStreamExt};
-use maud::Render;
+use maud::{Render, html};
 
 use crate::{
     db::{
@@ -19,7 +19,7 @@ use crate::{
         objects::{ChatId, LinkPreviewOptions, Message, ParseMode, ReplyParameters, Update},
         reaction::{Reaction, ReactionMethod},
         render,
-        render::ManageSearchQuery,
+        render::{DELIMITER, ManageSearchQuery},
     },
 };
 
@@ -94,7 +94,7 @@ impl<'s> Reactor<'s> {
         if !self.authorized_chat_ids.contains(&chat_id) {
             warn!("Unauthorized");
             let chat_id = ChatId::Integer(chat_id);
-            let text = render::unauthorized(&chat_id).render().into_string().into();
+            let text = render::unauthorized(&chat_id).render().into_string();
             return Ok(SendMessage::quick_html(Cow::Owned(chat_id), text).into());
         }
 
@@ -142,13 +142,13 @@ impl<'s> Reactor<'s> {
                 .build()
                 .into())
         } else {
-            let text = render::simple_message(
-                "There are no items matching the search query. Try a different query or subscribe anyway to wait for them to appear",
-                &[subscribe_link],
-            );
+            let markup = html! {
+                "There are no items matching the search query. Try a different query or subscribe anyway to wait for them to appear"
+                (ManageSearchQuery::new(&query.text, &[&subscribe_link]))
+            };
             Ok(SendMessage::builder()
                 .chat_id(Cow::Owned(chat_id.into()))
-                .text(text)
+                .text(markup.render().into_string())
                 .parse_mode(ParseMode::Html)
                 .reply_parameters(reply_parameters)
                 .link_preview_options(LinkPreviewOptions::DISABLED)
@@ -184,9 +184,10 @@ impl<'s> Reactor<'s> {
             let mut methods: Vec<SendMessage> = Vec::new();
 
             if let Some(subscription_command) = command.subscription {
-                let subscription =
-                    Subscription { query_hash: subscription_command.query_hash, chat_id };
+                let query_hash = subscription_command.query_hash;
+                let subscription = Subscription { query_hash, chat_id };
                 let connection = &mut *self.db.connection().await;
+                let query_text = SearchQueries(connection).fetch_text(query_hash).await?;
                 let mut subscriptions = Subscriptions(connection);
 
                 match SubscriptionAction::try_from(subscription_command.action) {
@@ -195,20 +196,31 @@ impl<'s> Reactor<'s> {
                         subscriptions.upsert(subscription).await?;
                         let unsubscribe_link =
                             self.command_builder.unsubscribe_link(subscription.query_hash);
-                        let text =
-                            render::simple_message("You are now subscribed", &[unsubscribe_link]);
-                        methods
-                            .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()));
+                        let markup = html! {
+                            "You are now subscribed"
+                            (DELIMITER)
+                            (ManageSearchQuery::new(&query_text, &[&unsubscribe_link]))
+                        };
+                        methods.push(SendMessage::quick_html(
+                            Cow::Owned(chat_id.into()),
+                            markup.render().into_string(),
+                        ));
                     }
 
                     Ok(SubscriptionAction::Unsubscribe) => {
                         info!(subscription.query_hash, "Unsubscribing");
                         subscriptions.delete(subscription).await?;
-                        let text = render::simple_message("You are now unsubscribed", &[self
-                            .command_builder
-                            .resubscribe_link(subscription.query_hash)]);
-                        methods
-                            .push(SendMessage::quick_html(Cow::Owned(chat_id.into()), text.into()));
+                        let resubscribe_link =
+                            self.command_builder.resubscribe_link(subscription.query_hash);
+                        let markup = html! {
+                            "You are now unsubscribed"
+                            (DELIMITER)
+                            (ManageSearchQuery::new(&query_text, &[&resubscribe_link]))
+                        };
+                        methods.push(SendMessage::quick_html(
+                            Cow::Owned(chat_id.into()),
+                            markup.render().into_string(),
+                        ));
                     }
 
                     _ => {} // TODO: technically, I should return a message that the action is no longer supported

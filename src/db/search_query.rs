@@ -39,6 +39,18 @@ impl<'a> SearchQueries<'a> {
 
         Ok(())
     }
+
+    #[instrument(skip_all, fields(hash = hash))]
+    pub async fn fetch_text(&mut self, hash: i64) -> Result<String> {
+        // language=sql
+        const QUERY: &str = "SELECT text FROM search_queries WHERE hash = ?1";
+
+        sqlx::query_scalar(QUERY)
+            .bind(hash)
+            .fetch_one(&mut *self.0)
+            .await
+            .with_context(|| format!("failed to fetch the query text for hash `{hash}`"))
+    }
 }
 
 #[cfg(test)]
@@ -49,7 +61,7 @@ mod tests {
     use crate::db::Db;
 
     #[tokio::test]
-    async fn upsert_search_query_ok() -> Result {
+    async fn search_query_ok() -> Result {
         let db = Db::try_new(Path::new(":memory:")).await?;
         let mut connection = db.connection().await;
         let mut search_queries = SearchQueries(&mut connection);
@@ -57,6 +69,8 @@ mod tests {
         let query = SearchQuery::from("test".to_string());
         search_queries.upsert(&query).await?;
         search_queries.upsert(&query).await?; // verify conflicts
+
+        assert_eq!(search_queries.fetch_text(query.hash).await?, query.text);
 
         Ok(())
     }

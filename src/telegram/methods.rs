@@ -149,7 +149,7 @@ impl Method for SendMessage<'_> {
 
 impl<'a> SendMessage<'a> {
     /// Quick HTML-formatted message without a link preview.
-    pub fn quick_html(chat_id: Cow<'a, ChatId>, text: Cow<'a, str>) -> Self {
+    pub fn quick_html(chat_id: Cow<'a, ChatId>, text: impl Into<Cow<'a, str>>) -> Self {
         Self::builder()
             .chat_id(chat_id)
             .text(text)
