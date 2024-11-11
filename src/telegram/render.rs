@@ -97,12 +97,12 @@ impl Render for Price {
         html! {
             @match self {
                 Self::Fixed { asking } => { strong { (Euro::from(*asking)) } }
-                Self::OnRequest => { "❔ price on request" }
+                Self::OnRequest => { "🙋price on request" }
                 Self::MinBid { asking } => { strong { (Euro::from(*asking)) } (DELIMITER) "⬇️ bidding" }
-                Self::SeeDescription => { }
+                Self::SeeDescription => { "📝 price in description" }
                 Self::ToBeAgreed => { "🤝 price to be agreed" }
                 Self::Reserved => { "⚠️ reserved" }
-                Self::FastBid => { "⬆️ bidding" }
+                Self::FastBid => { "⬆️ auction" }
                 Self::Free => { em { "🆓 free" } }
                 Self::Exchange => { "💱 exchange" }
             }
@@ -178,7 +178,7 @@ impl Render for Delivery {
             @match self {
                 Self::CollectionOnly => "🚶 collection",
                 Self::ShippingOnly => "📦 shipping",
-                Self::CollectionOrShipping => { (Self::CollectionOnly) (DELIMITER) (Self::ShippingOnly) }
+                Self::CollectionOrShipping => { (Self::ShippingOnly) (DELIMITER) (Self::CollectionOnly) }
             }
         }
     }
