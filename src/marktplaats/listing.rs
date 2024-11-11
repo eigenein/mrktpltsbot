@@ -1,5 +1,5 @@
 use rust_decimal::Decimal;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 #[derive(Debug, Deserialize)]
 pub struct Listings {
@@ -57,9 +57,7 @@ impl Listing {
     }
 
     pub fn description(&self) -> &str {
-        self.category_specific_description
-            .as_deref()
-            .unwrap_or(&self.description)
+        self.category_specific_description.as_deref().unwrap_or(&self.description)
     }
 }
 
@@ -91,8 +89,8 @@ pub enum Price {
     /// Fixed price, bids are not allowed.
     #[serde(rename = "FIXED")]
     Fixed {
-        #[serde(rename = "priceCents")]
-        asking: Cents,
+        #[serde(rename = "priceCents", deserialize_with = "PriceAmount::deserialize_as_cents")]
+        asking: PriceAmount,
     },
 
     #[serde(rename = "ON_REQUEST")]
@@ -102,8 +100,8 @@ pub enum Price {
     #[serde(rename = "MIN_BID")]
     MinBid {
         /// Asking price.
-        #[serde(rename = "priceCents")]
-        asking: Cents,
+        #[serde(rename = "priceCents", deserialize_with = "PriceAmount::deserialize_as_cents")]
+        asking: PriceAmount,
     },
 
     #[serde(rename = "SEE_DESCRIPTION")]
@@ -126,16 +124,15 @@ pub enum Price {
     Exchange,
 }
 
-/// Price in euro-cents.
-#[derive(Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Cents(pub u32);
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Euro(pub Decimal);
+pub struct PriceAmount(pub Decimal);
 
-impl From<Cents> for Euro {
-    fn from(cents: Cents) -> Self {
-        Self(Decimal::from(cents.0) / Decimal::ONE_HUNDRED)
+impl PriceAmount {
+    fn deserialize_as_cents<'de, D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(Self(Decimal::new(i64::deserialize(deserializer)?, 2)))
     }
 }
 
@@ -229,8 +226,18 @@ mod tests {
     use crate::prelude::*;
 
     #[test]
-    fn euro_from_cents_ok() {
-        assert_eq!(Euro::from(Cents(1250)), Euro(dec!(12.5)));
+    fn price_amount_deserialize_as_cents_ok() -> Result {
+        #[derive(Deserialize)]
+        struct Item {
+            #[serde(deserialize_with = "PriceAmount::deserialize_as_cents")]
+            amount: PriceAmount,
+        }
+
+        // language=json
+        let item: Item = serde_json::from_str(r#"{"amount": 1234}"#)?;
+        assert_eq!(item.amount.0, dec!(12.34));
+
+        Ok(())
     }
 
     #[test]

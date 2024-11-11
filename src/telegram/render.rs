@@ -11,10 +11,10 @@ use crate::{
         Attribute,
         Condition,
         Delivery,
-        Euro,
         Listing,
         Location,
         Price,
+        PriceAmount,
         Seller,
     },
     telegram::objects::ChatId,
@@ -96,9 +96,9 @@ impl Render for Price {
     fn render(&self) -> Markup {
         html! {
             @match self {
-                Self::Fixed { asking } => { strong { (Euro::from(*asking)) } }
+                Self::Fixed { asking } => { strong { (asking) } }
                 Self::OnRequest => { "🙋price on request" }
-                Self::MinBid { asking } => { strong { (Euro::from(*asking)) } (DELIMITER) "⬇️ bidding" }
+                Self::MinBid { asking } => { strong { (asking) } (DELIMITER) "⬇️ bidding" }
                 Self::SeeDescription => { "📝 price in description" }
                 Self::ToBeAgreed => { "🤝 price to be agreed" }
                 Self::Reserved => { "⚠️ reserved" }
@@ -110,7 +110,7 @@ impl Render for Price {
     }
 }
 
-impl Render for Euro {
+impl Render for PriceAmount {
     fn render(&self) -> Markup {
         html! {
             "€" (self.0)
