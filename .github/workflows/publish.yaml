@@ -9,11 +9,9 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: ✨ Publish
+  crate:
+    name: ✨ Publish to crates.io
     runs-on: macos-latest
-    permissions:
-      contents: write
 
     steps:
       - name: 📥 Checkout
@@ -26,3 +24,22 @@ jobs:
         run: cargo publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  windows-build:
+    name: 🪟 Build for Windows
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🦀 Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 🏗️ Build
+        run: cargo build --release
+
+      - name: 📤 Upload asset
+        run: gh release upload '$GITHUB_REF' target/release/mrktpltsbot.exe
