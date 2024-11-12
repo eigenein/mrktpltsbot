@@ -9,7 +9,7 @@ license = "MIT"
 publish = true
 readme = "README.md"
 repository = "https://github.com/eigenein/mrktpltsbot"
-version = "2.0.0-beta.5"
+version = "2.0.0-beta.6"
 rust-version = "1.82"
 
 [badges]

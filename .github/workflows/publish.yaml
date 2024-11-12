@@ -42,6 +42,6 @@ jobs:
         run: cargo build --release
 
       - name: 📤 Upload asset
-        run: gh release upload '$GITHUB_REF' target/release/mrktpltsbot.exe
+        run: gh release upload ${{ github.event.release.tag_name }} target/release/mrktpltsbot.exe
         env:
           GH_TOKEN: ${{ github.token }}
