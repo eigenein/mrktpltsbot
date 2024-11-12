@@ -43,3 +43,5 @@ jobs:
 
       - name: 📤 Upload asset
         run: gh release upload '$GITHUB_REF' target/release/mrktpltsbot.exe
+        env:
+          GH_TOKEN: ${{ github.token }}
