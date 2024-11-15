@@ -4,6 +4,7 @@ use std::{any::type_name, time::Duration};
 
 use clap::crate_version;
 use reqwest::{
+    Body,
     IntoUrl,
     Method,
     header,
@@ -13,6 +14,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::prelude::*;
 
+/// [`reqwest::Client`] wrapper that encapsulates the client's settings.
 #[derive(Clone)]
 pub struct Client(reqwest::Client);
 
@@ -25,12 +27,9 @@ impl Client {
         " (Rust; https://github.com/eigenein/mrktpltsbot)",
     );
 
-    pub fn new() -> Result<Self> {
+    pub fn try_new() -> Result<Self> {
         let mut headers = HeaderMap::new();
-        headers.insert(
-            header::USER_AGENT,
-            HeaderValue::from_static(Self::USER_AGENT),
-        );
+        headers.insert(header::USER_AGENT, HeaderValue::from_static(Self::USER_AGENT));
         reqwest::Client::builder()
             .gzip(true)
             .use_rustls_tls()
@@ -48,14 +47,17 @@ impl Client {
     }
 }
 
+/// [`reqwest::RequestBuilder`] wrapper that traces the requests.
 pub struct RequestBuilder(reqwest::RequestBuilder);
 
 impl RequestBuilder {
     pub fn try_clone(&self) -> Result<Self> {
-        self.0
-            .try_clone()
-            .context("failed to clone the request builder")
-            .map(Self)
+        self.0.try_clone().context("failed to clone the request builder").map(Self)
+    }
+
+    /// Send a body.
+    pub fn body(self, body: impl Into<Body>) -> Self {
+        Self(self.0.body(body))
     }
 
     /// Send a JSON body.
@@ -72,22 +74,16 @@ impl RequestBuilder {
     pub async fn read_json<R: DeserializeOwned>(self, error_for_status: bool) -> Result<R> {
         let body = self.read_text(error_for_status).await?;
         serde_json::from_str(&body).with_context(|| {
-            format!(
-                "failed to deserialize the response into `{}`",
-                type_name::<R>()
-            )
+            format!("failed to deserialize the response into `{}`", type_name::<R>())
         })
     }
 
     #[instrument(skip_all, ret(level = Level::DEBUG), err(level = Level::DEBUG))]
-    async fn read_text(self, error_for_status: bool) -> Result<String> {
+    pub async fn read_text(self, error_for_status: bool) -> Result<String> {
         let response = self.0.send().await.context("failed to send the request")?;
         let status = response.status();
         trace!(url = ?response.url(), ?status, "Reading response…");
-        let body = response
-            .text()
-            .await
-            .context("failed to read the response")?;
+        let body = response.text().await.context("failed to read the response")?;
         trace!(?status, body, "Received response");
         if error_for_status && (status.is_client_error() || status.is_server_error()) {
             Err(anyhow!("HTTP {status:?}"))

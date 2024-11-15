@@ -9,7 +9,7 @@ license = "MIT"
 publish = true
 readme = "README.md"
 repository = "https://github.com/eigenein/mrktpltsbot"
-version = "2.0.0-rc.1"
+version = "2.0.0-rc.2"
 rust-version = "1.82"
 
 [badges]
@@ -33,6 +33,7 @@ pedantic = { level = "warn", priority = -1 }
 
 # Individual flags:
 future_not_send = "allow"
+ignored_unit_patterns = "allow"
 missing_errors_doc = "allow"
 module_name_repetitions = "allow"
 significant_drop_tightening = "allow"

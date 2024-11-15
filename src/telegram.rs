@@ -18,6 +18,7 @@ use url::Url;
 
 use crate::{
     client::Client,
+    heartbeat::Heartbeat,
     prelude::*,
     telegram::{
         error::TelegramError,
@@ -86,19 +87,25 @@ impl Telegram {
     }
 
     /// Convert the client into a [`Stream`] of Telegram [`Update`]'s.
-    pub fn into_updates(
+    pub fn into_updates<'a>(
         self,
         offset: u64,
         poll_timeout_secs: u64,
-    ) -> impl Stream<Item = Result<Update>> {
+        heartbeat: &'a Heartbeat<'a>,
+    ) -> impl Stream<Item = Result<Update>> + 'a {
         let advance = move |(this, offset)| async move {
-            let updates = GetUpdates::builder()
+            let updates_result = GetUpdates::builder()
                 .offset(offset)
                 .timeout_secs(poll_timeout_secs)
                 .allowed_updates(&[AllowedUpdate::Message])
                 .build()
                 .call_on(&this)
-                .await?;
+                .await;
+            match &updates_result {
+                Ok(_) => heartbeat.report_success().await,
+                Err(error) => heartbeat.report_failure(error).await,
+            }
+            let updates = updates_result?;
             let next_offset = updates.last().map_or(offset, |last_update| last_update.id + 1);
             info!(n = updates.len(), next_offset, "Received Telegram updates");
             Ok::<_, Error>(Some((stream::iter(updates).map(Ok), (this, next_offset))))

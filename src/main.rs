@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-use std::time::Duration;
+use std::{pin::pin, time::Duration};
 
 use clap::Parser;
 use futures::{StreamExt, TryFutureExt};
@@ -9,6 +9,7 @@ use crate::{
     cli::Args,
     client::Client,
     db::{Db, notification::Notifications},
+    heartbeat::Heartbeat,
     marktplaats::Marktplaats,
     prelude::*,
     telegram::{Telegram, reaction::Reaction},
@@ -17,6 +18,7 @@ use crate::{
 mod cli;
 mod client;
 mod db;
+mod heartbeat;
 mod logging;
 mod marktplaats;
 mod prelude;
@@ -38,14 +40,16 @@ fn main() -> Result {
 }
 
 async fn async_main(cli: Args) -> Result {
-    let client = Client::new()?;
+    let client = Client::try_new()?;
     let telegram = Telegram::new(client.clone(), cli.telegram.bot_token.into())?;
-    let marktplaats = Marktplaats(client);
+    let marktplaats = Marktplaats(client.clone());
     let db = Db::try_new(&cli.db).await?;
     let command_builder = telegram::bot::try_init(&telegram).await?;
 
     // Handle Telegram updates:
-    let telegram_updates = telegram.clone().into_updates(0, cli.telegram.poll_timeout_secs);
+    let telegram_heartbeat = Heartbeat::try_new(&client, cli.telegram.heartbeat_url)?;
+    let telegram_updates =
+        telegram.clone().into_updates(0, cli.telegram.poll_timeout_secs, &telegram_heartbeat);
     let telegram_reactor = telegram::bot::Reactor::builder()
         .authorized_chat_ids(cli.telegram.authorized_chat_ids.into_iter().collect())
         .db(&db)
@@ -62,16 +66,17 @@ async fn async_main(cli: Args) -> Result {
         .command_builder(&command_builder)
         .search_limit(cli.marktplaats.search_limit)
         .build();
-    let marktplaats_reactions = marktplaats_reactor.run();
+    let marktplaats_heartbeat = Heartbeat::try_new(&client, cli.marktplaats.heartbeat_url)?;
+    let marktplaats_reactions = marktplaats_reactor.run(&marktplaats_heartbeat);
 
     // Now, merge all the reactions and execute them:
-    tokio_stream::StreamExt::merge(telegram_reactions, marktplaats_reactions)
+    let reactor = tokio_stream::StreamExt::merge(telegram_reactions, marktplaats_reactions)
         .filter_map(|result| async {
             // Log and skip error to keep the reactor going.
             result.inspect_err(|error| error!("Reactor error: {error:#}")).ok()
         })
-        .for_each(|reaction| execute_reaction(reaction, &telegram, &db))
-        .await;
+        .for_each(|reaction| execute_reaction(reaction, &telegram, &db));
+    pin!(reactor).await;
 
     unreachable!()
 }

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, future, time::Duration};
+use std::{borrow::Cow, time::Duration};
 
 use bon::Builder;
 use chrono::Utc;
@@ -12,6 +12,7 @@ use crate::{
         search_query::SearchQuery,
         subscription::Subscription,
     },
+    heartbeat::Heartbeat,
     marktplaats::{Marktplaats, SearchRequest},
     prelude::*,
     telegram::{
@@ -37,17 +38,26 @@ pub struct Reactor<'s> {
 
 impl<'s> Reactor<'s> {
     /// Run the reactor indefinitely and produce reactions.
-    pub fn run(&'s self) -> impl Stream<Item = Result<Reaction<'static>>> + 's {
+    pub fn run(
+        &'s self,
+        heartbeat: &'s Heartbeat<'s>,
+    ) -> impl Stream<Item = Result<Reaction<'static>>> + 's {
         info!(?self.crawl_interval, "Running Marktplaats reactor…");
         tokio_stream::StreamExt::throttle(self.db.subscriptions(), self.crawl_interval)
-            .try_filter_map(|entry| {
+            .try_filter_map(|entry| async {
                 if entry.is_none() {
                     info!("No subscriptions found");
+                    heartbeat.report_success().await;
                 }
-                future::ready(Ok(entry))
+                Ok(entry)
             })
             .and_then(move |(subscription, search_query)| async move {
-                Ok(stream::iter(self.on_subscription(subscription, search_query).await?).map(Ok))
+                let result = self.on_subscription(subscription, search_query).await;
+                match &result {
+                    Ok(_) => heartbeat.report_success().await,
+                    Err(error) => heartbeat.report_failure(error).await,
+                }
+                Ok(stream::iter(result?).map(Ok))
             })
             .try_flatten()
     }
