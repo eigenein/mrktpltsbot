@@ -38,48 +38,34 @@ pub struct Telegram {
 
 impl Telegram {
     pub fn new(client: Client, token: SecretString) -> Result<Self> {
-        Ok(Self {
-            client,
-            token,
-            root_url: Url::parse("https://api.telegram.org")?,
-        })
+        Ok(Self { client, token, root_url: Url::parse("https://api.telegram.org")? })
     }
 
     /// Call the Telegram Bot API method with automatic throttling and retrying.
-    #[instrument(skip_all, fields(method = method.name()))]
+    #[instrument(skip_all)]
     pub async fn call<M, R>(&self, method: &M) -> Result<R>
     where
         M: Method + ?Sized,
         R: Debug + DeserializeOwned,
     {
         let mut url = self.root_url.clone();
-        url.set_path(&format!(
-            "bot{}/{}",
-            self.token.expose_secret(),
-            method.name()
-        ));
+        url.set_path(&format!("bot{}/{}", self.token.expose_secret(), method.name()));
 
-        let request_builder = self
-            .client
-            .request(reqwest::Method::POST, url)
-            .json(method)
-            .timeout(method.timeout());
+        let request_builder =
+            self.client.request(reqwest::Method::POST, url).json(method).timeout(method.timeout());
 
         let mut backoff = ExponentialBackoff::default();
         loop {
-            let result = request_builder
-                .try_clone()?
-                .read_json::<TelegramResult<R>>(false)
-                .await;
+            let result = request_builder.try_clone()?.read_json::<TelegramResult<R>>(false).await;
 
             let error = match result {
                 Ok(TelegramResult::Ok { result, .. }) => {
-                    info!("Done");
+                    info!(method = method.name(), "Done");
                     break Ok(result);
                 }
 
                 Ok(TelegramResult::Err(TelegramError::TooManyRequests { retry_after, .. })) => {
-                    warn!(retry_after.secs, "Throttling");
+                    warn!(method = method.name(), retry_after.secs, "Throttling");
                     sleep(Duration::from_secs(retry_after.secs)).await;
                     continue;
                 }
@@ -90,10 +76,10 @@ impl Telegram {
             };
 
             if let Some(duration) = backoff.next_backoff() {
-                warn!(?duration, "Retrying after the error: {error:#}",);
+                warn!(method = method.name(), ?duration, "Retrying after the error: {error:#}",);
                 sleep(duration).await;
             } else {
-                warn!("All attempts have failed");
+                warn!(method = method.name(), "All attempts have failed");
                 break Err(error);
             }
         }
@@ -113,9 +99,7 @@ impl Telegram {
                 .build()
                 .call_on(&this)
                 .await?;
-            let next_offset = updates
-                .last()
-                .map_or(offset, |last_update| last_update.id + 1);
+            let next_offset = updates.last().map_or(offset, |last_update| last_update.id + 1);
             info!(n = updates.len(), next_offset, "Received Telegram updates");
             Ok::<_, Error>(Some((stream::iter(updates).map(Ok), (this, next_offset))))
         };

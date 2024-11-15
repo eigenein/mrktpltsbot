@@ -82,9 +82,9 @@ impl<'s> Reactor<'s> {
     }
 
     /// Gracefully handle the error.
-    #[instrument(skip_all, fields(chat_id = %chat_id, message_id = message_id))]
+    #[instrument(skip_all)]
     fn on_error(chat_id: ChatId, message_id: u64, error: &Error) -> Reaction<'static> {
-        error!("Failed to handle the message: {error:#}");
+        error!(%chat_id, message_id, "Failed to handle the message: {error:#}");
         SendMessage::builder()
             .chat_id(Cow::Owned(chat_id))
             .text("💥 An internal error occurred and has been logged")
@@ -92,7 +92,7 @@ impl<'s> Reactor<'s> {
             .into()
     }
 
-    #[instrument(skip_all, fields(chat_id = chat_id, message_id = message_id, text = text))]
+    #[instrument(skip_all)]
     async fn on_message(
         &self,
         chat_id: i64,
@@ -100,7 +100,7 @@ impl<'s> Reactor<'s> {
         text: &str,
     ) -> Result<Reaction<'static>> {
         if !self.authorized_chat_ids.contains(&chat_id) {
-            warn!("Unauthorized");
+            warn!(chat_id, message_id, text, "Received message from an unauthorized chat");
             let chat_id = ChatId::Integer(chat_id);
             let text = render::unauthorized(&chat_id).render().into_string();
             return Ok(SendMessage::quick_html(Cow::Owned(chat_id), text).into());

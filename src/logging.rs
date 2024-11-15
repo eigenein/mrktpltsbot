@@ -39,7 +39,8 @@ pub fn init(sentry_dsn: Option<&str>) -> Result<(ClientInitGuard, WorkerGuard)> 
 #[must_use]
 fn event_filter(metadata: &Metadata) -> EventFilter {
     match *metadata.level() {
-        Level::ERROR | Level::WARN => EventFilter::Exception,
+        Level::ERROR => EventFilter::Exception,
+        Level::WARN => EventFilter::Event,
         _ => EventFilter::Breadcrumb,
     }
 }

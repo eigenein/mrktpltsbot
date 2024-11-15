@@ -29,7 +29,7 @@ pub struct Db(Mutex<SqliteConnection>);
 
 impl Db {
     /// TODO: change `Path` into `AsRef<Path>`.
-    #[instrument(skip_all, fields(path = ?path))]
+    #[instrument(skip_all)]
     pub async fn try_new(path: &Path) -> Result<Self> {
         let mut connection = SqliteConnectOptions::new()
             .create_if_missing(true)
@@ -38,7 +38,7 @@ impl Db {
             .await
             .with_context(|| format!("failed to open database `{path:?}`"))?;
         MIGRATOR.run(&mut connection).await.context("failed to migrate the database")?;
-        info!("The database is ready");
+        info!(?path, "The database is ready");
         Ok(Self(Mutex::new(connection)))
     }
 

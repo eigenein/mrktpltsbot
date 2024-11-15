@@ -53,13 +53,13 @@ impl<'s> Reactor<'s> {
     }
 
     /// Handle the [`Subscription`] and return [`Reaction`]'s to it.
-    #[instrument(skip_all, fields(chat_id = subscription.chat_id, query = search_query.text))]
+    #[instrument(skip_all)]
     async fn on_subscription(
         &self,
         subscription: Subscription,
         search_query: SearchQuery,
     ) -> Result<Vec<Reaction<'static>>> {
-        info!("Crawling…");
+        info!(subscription.chat_id, search_query.text, "Crawling…");
         let text = &search_query.text;
         let unsubscribe_link = &self.command_builder.unsubscribe_link(search_query.hash);
 
@@ -67,7 +67,7 @@ impl<'s> Reactor<'s> {
             .call_on(self.marktplaats)
             .await?
             .inner;
-        info!(n_listings = listings.len(), "Fetched");
+        info!(subscription.chat_id, search_query.text, n_listings = listings.len(), "Fetched");
 
         let reactions: Vec<_> = stream::iter(listings)
             .map(Ok)
@@ -80,10 +80,10 @@ impl<'s> Reactor<'s> {
                     chat_id: subscription.chat_id,
                 };
                 if Notifications(&mut connection).exists(&notification).await? {
-                    trace!("Notification was already sent");
+                    trace!(subscription.chat_id, listing.item_id, "Notification was already sent");
                     return Ok(None);
                 }
-                info!(item_id = notification.item_id, "Reacting");
+                info!(subscription.chat_id, notification.item_id, "Reacting");
                 let description = render::listing_description(
                     &listing,
                     &ManageSearchQuery::new(text, &[unsubscribe_link]),
@@ -106,7 +106,7 @@ impl<'s> Reactor<'s> {
             .collect()
             .await;
 
-        info!(n_reactions = reactions.len(), "Done");
+        info!(subscription.chat_id, search_query.text, n_reactions = reactions.len(), "Done");
         Ok(reactions)
     }
 }
