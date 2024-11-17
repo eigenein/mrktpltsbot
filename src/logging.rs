@@ -10,7 +10,7 @@ use crate::prelude::*;
 
 pub fn init(sentry_dsn: Option<&str>) -> Result<(ClientInitGuard, WorkerGuard)> {
     let sentry_options = ClientOptions {
-        attach_stacktrace: false,
+        attach_stacktrace: true,
         in_app_include: vec![crate_name!()],
         release: Some(Cow::Borrowed(crate_version!())),
         send_default_pii: true,
