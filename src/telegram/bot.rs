@@ -152,6 +152,7 @@ impl<'s> Reactor<'s> {
         } else {
             let markup = html! {
                 "There are no items matching the search query. Try a different query or subscribe anyway to wait for them to appear"
+                (DELIMITER)
                 (ManageSearchQuery::new(&query.text, &[&subscribe_link]))
             };
             Ok(SendMessage::builder()
