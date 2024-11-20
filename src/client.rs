@@ -72,13 +72,13 @@ impl RequestBuilder {
         })
     }
 
-    #[instrument(skip_all, ret(level = Level::DEBUG), err(level = Level::DEBUG))]
+    #[instrument(skip_all, err(level = Level::DEBUG))]
     pub async fn read_text(self, error_for_status: bool) -> Result<String> {
         let response = self.0.send().await.context("failed to send the request")?;
         let status = response.status();
         trace!(url = ?response.url(), ?status, "Reading response…");
         let body = response.text().await.context("failed to read the response")?;
-        trace!(?status, body, "Received response");
+        debug!(?status, body, "Received response");
         if error_for_status && (status.is_client_error() || status.is_server_error()) {
             Err(anyhow!("HTTP {status:?}"))
         } else {
