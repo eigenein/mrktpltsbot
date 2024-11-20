@@ -47,17 +47,14 @@ impl<'s> Reactor<'s> {
             .try_filter_map(|entry| async {
                 if entry.is_none() {
                     info!("No subscriptions found");
-                    heartbeat.report_success().await;
+                    heartbeat.check_in().await;
                 }
                 Ok(entry)
             })
             .and_then(move |(subscription, search_query)| async move {
-                let result = self.on_subscription(subscription, search_query).await;
-                match &result {
-                    Ok(_) => heartbeat.report_success().await,
-                    Err(error) => heartbeat.report_failure(error).await,
-                }
-                Ok(stream::iter(result?).map(Ok))
+                let reactions = self.on_subscription(subscription, search_query).await?;
+                heartbeat.check_in().await;
+                Ok(stream::iter(reactions).map(Ok))
             })
             .try_flatten()
     }

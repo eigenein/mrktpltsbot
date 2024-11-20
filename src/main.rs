@@ -47,7 +47,7 @@ async fn async_main(cli: Args) -> Result {
     let command_builder = telegram::bot::try_init(&telegram).await?;
 
     // Handle Telegram updates:
-    let telegram_heartbeat = Heartbeat::try_new(&client, cli.telegram.heartbeat_url)?;
+    let telegram_heartbeat = Heartbeat::new(&client, cli.telegram.heartbeat_url);
     let telegram_updates =
         telegram.clone().into_updates(0, cli.telegram.poll_timeout_secs, &telegram_heartbeat);
     let telegram_reactor = telegram::bot::Reactor::builder()
@@ -66,7 +66,7 @@ async fn async_main(cli: Args) -> Result {
         .command_builder(&command_builder)
         .search_limit(cli.marktplaats.search_limit)
         .build();
-    let marktplaats_heartbeat = Heartbeat::try_new(&client, cli.marktplaats.heartbeat_url)?;
+    let marktplaats_heartbeat = Heartbeat::new(&client, cli.marktplaats.heartbeat_url);
     let marktplaats_reactions = marktplaats_reactor.run(&marktplaats_heartbeat);
 
     // Now, merge all the reactions and execute them:

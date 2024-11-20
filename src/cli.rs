@@ -43,7 +43,7 @@ pub struct MarktplaatsArgs {
     )]
     pub search_limit: u32,
 
-    /// Better Stack heartbeat URL for the Marktplaats crawler.
+    /// Heartbeat URL for the Marktplaats crawler.
     #[clap(
         long = "marktplaats-heartbeat-url",
         env = "MARKTPLAATS_HEARTBEAT_URL",
@@ -79,7 +79,7 @@ pub struct TelegramArgs {
     )]
     pub authorized_chat_ids: Vec<i64>,
 
-    /// Better Stack heartbeat URL for the Telegram bot.
+    /// Heartbeat URL for the Telegram bot.
     #[clap(
         long = "telegram-heartbeat-url",
         env = "TELEGRAM_HEARTBEAT_URL",

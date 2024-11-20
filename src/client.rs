@@ -4,7 +4,6 @@ use std::{any::type_name, time::Duration};
 
 use clap::crate_version;
 use reqwest::{
-    Body,
     IntoUrl,
     Method,
     header,
@@ -53,11 +52,6 @@ pub struct RequestBuilder(reqwest::RequestBuilder);
 impl RequestBuilder {
     pub fn try_clone(&self) -> Result<Self> {
         self.0.try_clone().context("failed to clone the request builder").map(Self)
-    }
-
-    /// Send a body.
-    pub fn body(self, body: impl Into<Body>) -> Self {
-        Self(self.0.body(body))
     }
 
     /// Send a JSON body.
