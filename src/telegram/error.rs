@@ -20,7 +20,7 @@ pub enum TelegramError {
         retry_after: RetryAfterParameters,
     },
 
-    #[error("bad request: {description}")]
+    #[error("{description}")]
     BadRequest { ok: MustBe!(false), description: String, error_code: MustBe!(400) },
 
     #[error("API error {error_code}: {description}")]
