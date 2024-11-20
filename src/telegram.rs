@@ -71,8 +71,13 @@ impl Telegram {
                     continue;
                 }
 
-                Ok(TelegramResult::Err(error)) => anyhow!("Telegram Bot API error: {error:#}"),
+                Ok(TelegramResult::Err(error @ TelegramError::BadRequest { .. })) => {
+                    // Do not retry bad requests:
+                    break Err(error.into());
+                }
 
+                // Retry other errors:
+                Ok(TelegramResult::Err(error)) => Error::from(error),
                 Err(error) => error,
             };
 

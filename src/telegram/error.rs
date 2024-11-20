@@ -20,13 +20,11 @@ pub enum TelegramError {
         retry_after: RetryAfterParameters,
     },
 
-    #[error("API error ({error_code}) {description}")]
-    ApiError {
-        ok: MustBe!(false),
+    #[error("bad request: {description}")]
+    BadRequest { ok: MustBe!(false), description: String, error_code: MustBe!(400) },
 
-        description: String,
-        error_code: i32,
-    },
+    #[error("API error {error_code}: {description}")]
+    ApiError { ok: MustBe!(false), description: String, error_code: i32 },
 }
 
 /// [Additional error details for exceeded rate limit][1].
