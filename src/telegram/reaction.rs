@@ -78,8 +78,11 @@ impl<'a> ReactionMethod<'a> {
         #[builder(into)] pictures: Vec<Picture>,
         reply_parameters: Option<ReplyParameters>,
     ) -> Self {
-        let mut image_urls: VecDeque<_> =
-            pictures.into_iter().filter_map(Picture::into_url).collect();
+        let mut image_urls: VecDeque<_> = pictures
+            .into_iter()
+            .filter_map(Picture::into_url)
+            .inspect(|url| debug!(url, "Using image"))
+            .collect();
 
         // Specific representation depends on how many pictures there are.
         match image_urls.len() {
