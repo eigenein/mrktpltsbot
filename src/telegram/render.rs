@@ -197,7 +197,7 @@ impl<'a, C> ManageSearchQuery<'a, C> {
     }
 }
 
-impl<'a, C: Render> Render for ManageSearchQuery<'a, C> {
+impl<C: Render> Render for ManageSearchQuery<'_, C> {
     fn render(&self) -> Markup {
         html! {
             em { (self.search_query) }

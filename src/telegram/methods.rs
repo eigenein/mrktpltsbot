@@ -65,7 +65,7 @@ pub struct SetMyDescription<'a> {
     pub description: Option<Cow<'a, str>>,
 }
 
-impl<'a> Method for SetMyDescription<'a> {
+impl Method for SetMyDescription<'_> {
     type Response = bool;
 
     fn name(&self) -> &'static str {
@@ -106,7 +106,7 @@ pub struct GetUpdates<'a> {
     pub allowed_updates: Option<&'a [AllowedUpdate]>,
 }
 
-impl<'a> Method for GetUpdates<'a> {
+impl Method for GetUpdates<'_> {
     type Response = Vec<Update>;
 
     fn name(&self) -> &'static str {
