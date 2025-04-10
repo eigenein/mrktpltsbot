@@ -1,0 +1,55 @@
+name: ✨ Publish
+run-name: 🔖 Publish ${{ github.ref_name }}
+
+on:
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch: { }
+
+jobs:
+  goreleaser:
+    name: ✨ Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        name: 📥 Checkout
+        with:
+          fetch-depth: 0
+
+      - name: ⬆️ Update Rust
+        run: rustup update --no-self-update
+
+      - uses: mlugg/setup-zig@v1
+        name: ⚡️ Install Zig
+
+      - name: ⚡️ Install `cargo-zigbuild`
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
+
+      - uses: sigstore/cosign-installer@v3.7.0
+        name: ✏️ Set up Cosign
+
+      - name: 🐬 Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: 🐬 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🐬 Log in
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: goreleaser/goreleaser-action@v6
+        name: 🚀 Build and publish
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --fail-fast --snapshot --skip=archive,publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

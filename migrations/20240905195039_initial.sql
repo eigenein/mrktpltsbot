@@ -1,3 +1,8 @@
+-- TODO: recreate all tables:
+-- 1. With NOT NULL primary keys
+-- 2. Without ROWID
+-- 3. With STRICT
+
 CREATE TABLE search_queries
 (
     -- SeaHash'ed search QUERY,

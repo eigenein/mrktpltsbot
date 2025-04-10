@@ -1,6 +1,10 @@
 .env
 *.sqlite3*
 
+# Added by goreleaser init:
+dist/
+.intentionally-empty-file.o
+
 ### Linux template
 *~
 
@@ -195,4 +199,3 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
-
