@@ -38,30 +38,30 @@ module_name_repetitions = "allow"
 significant_drop_tightening = "allow"
 
 [dependencies]
-anyhow = { version = "1.0.91", features = ["backtrace"] }
-base64-url = "3.0.0"
-bon = "3.0.1"
-chrono = "0.4.38"
-clap = { version = "4.5.20", features = ["cargo", "derive", "env", "unicode"] }
-dotenvy = "0.15.7"
-futures = { version = "0.3.31", default-features = false }
-maud = "0.27.0"
-monostate = "0.1.13"
-reqwest = { version = "0.12.9", default-features = false, features = ["gzip", "http2", "json", "rustls-tls"] }
-prost = "0.13.3"
-rust_decimal = "1.36.0"
-rust_decimal_macros = "1.36.0"
-seahash = "4.1.0"
-secrecy = "0.10.3"
-sentry = { version = "0.37.0", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "rustls", "tracing"] }
-serde = "1.0.214"
-serde_json = "1.0.132"
-serde_qs = "0.14.0"
-sqlx = { version = "0.8.3", features = ["chrono", "migrate", "runtime-tokio", "sqlite"] }
-sqlx-sqlite = "0.8.3"
-tokio = { version = "1.41.0", features = ["macros", "rt-multi-thread"] }
-tokio-stream = { version = "0.1.16", features = ["time"] }
-tracing = "0.1.40"
-tracing-appender = "0.2.3"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-url = "2.5.2"
+anyhow = { version = "=1.0.91", features = ["backtrace"] }
+base64-url = "=3.0.0"
+bon = "=3.0.1"
+chrono = "=0.4.38"
+clap = { version = "=4.5.20", features = ["cargo", "derive", "env", "unicode"] }
+dotenvy = "=0.15.7"
+futures = { version = "=0.3.31", default-features = false }
+maud = "=0.27.0"
+monostate = "=0.1.13"
+reqwest = { version = "=0.12.9", default-features = false, features = ["gzip", "http2", "json", "rustls-tls"] }
+prost = "=0.13.3"
+rust_decimal = "=1.36.0"
+rust_decimal_macros = "=1.36.0"
+seahash = "=4.1.0"
+secrecy = "=0.10.3"
+sentry = { version = "=0.37.0", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "rustls", "tracing"] }
+serde = "=1.0.214"
+serde_json = "=1.0.132"
+serde_qs = "=0.14.0"
+sqlx = { version = "=0.8.3", features = ["chrono", "migrate", "runtime-tokio", "sqlite"] }
+sqlx-sqlite = "=0.8.3"
+tokio = { version = "=1.41.0", features = ["macros", "rt-multi-thread"] }
+tokio-stream = { version = "=0.1.16", features = ["time"] }
+tracing = "=0.1.40"
+tracing-appender = "=0.2.3"
+tracing-subscriber = { version = "=0.3.18", features = ["env-filter"] }
+url = "=2.5.2"
