@@ -41,12 +41,12 @@ significant_drop_tightening = "allow"
 anyhow = { version = "=1.0.98", features = ["backtrace"] }
 base64-url = "=3.0.0"
 bon = "=3.6.3"
-chrono = "=0.4.38"
+chrono = "=0.4.41"
 clap = { version = "=4.5.37", features = ["cargo", "derive", "env", "unicode"] }
 dotenvy = "=0.15.7"
 maud = "=0.27.0"
 monostate = "=0.1.14"
-reqwest = { version = "=0.12.9", default-features = false, features = ["cookies", "gzip", "http2", "json", "rustls-tls"] }
+reqwest = { version = "=0.12.15", default-features = false, features = ["cookies", "gzip", "http2", "json", "rustls-tls"] }
 reqwest-middleware = { version = "0.4.2", features = ["http2", "json", "rustls-tls"] }
 reqwest-tracing = "0.5.7"
 prost = "=0.13.5"
