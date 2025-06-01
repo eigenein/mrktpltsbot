@@ -23,7 +23,7 @@ jobs:
       - name: ⬆️ Update Rust
         run: rustup update --no-self-update
 
-      - uses: mlugg/setup-zig@v1
+      - uses: mlugg/setup-zig@v2
         name: ⚡️ Install Zig
 
       - name: ⚡️ Install `cargo-zigbuild`
