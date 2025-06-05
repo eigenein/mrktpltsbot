@@ -6,7 +6,7 @@ pub mod objects;
 pub mod render;
 mod response;
 
-use std::fmt::Debug;
+use std::{collections::BTreeMap, fmt::Debug};
 
 use reqwest_middleware::ClientWithMiddleware;
 use secrecy::{ExposeSecret, SecretString};
@@ -44,13 +44,18 @@ impl Telegram {
         M: Method + ?Sized,
         R: Debug + DeserializeOwned,
     {
-        let mut url = self.root_url.clone();
-        url.set_path(&format!("bot{}/{}", self.token.expose_secret(), method.name()));
-        let response = self
-            .client
-            .post(url)
-            .json(method)
-            .timeout(method.timeout())
+        let url = {
+            let mut url = self.root_url.clone();
+            url.set_path(&format!("bot{}/{}", self.token.expose_secret(), method.name()));
+            url
+        };
+        let request_body = serde_json::to_value(method)?;
+        let request = self.client.post(url).json(&request_body).timeout(method.timeout());
+        sentry::configure_scope(|scope| {
+            let context = BTreeMap::from([("request.body".to_string(), request_body)]);
+            scope.set_context("telegram", sentry::protocol::Context::Other(context));
+        });
+        let response = request
             .send()
             .await
             .with_context(|| format!("failed to call `{}`", method.name()))?
