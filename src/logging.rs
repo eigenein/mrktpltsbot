@@ -82,7 +82,6 @@ fn event_filter(metadata: &Metadata) -> EventFilter {
     match *metadata.level() {
         Level::ERROR => EventFilter::Exception,
         Level::WARN => EventFilter::Event,
-        _ if metadata.name().starts_with(crate_name!()) => EventFilter::Breadcrumb,
-        _ => EventFilter::Ignore,
+        _ => EventFilter::Breadcrumb,
     }
 }
