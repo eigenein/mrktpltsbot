@@ -228,7 +228,7 @@ impl Bot {
                     .reply_parameters(reply_parameters)
                     .parse_mode(ParseMode::Html)
                     .build()
-                    .react_to(&self.telegram)
+                    .send_to(&self.telegram)
                     .await?;
             }
         }

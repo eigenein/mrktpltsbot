@@ -59,7 +59,7 @@ impl<'a> Notification<'a> {
 }
 
 impl Notification<'_> {
-    pub async fn react_to(&self, telegram: &Telegram) -> Result {
+    pub async fn send_to(&self, telegram: &Telegram) -> Result {
         match self {
             Notification::Message(inner) => inner.call_and_discard_on(telegram).await,
             Notification::Photo(inner) => inner.call_and_discard_on(telegram).await,

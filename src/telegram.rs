@@ -1,19 +1,19 @@
 mod bot;
 pub mod commands;
 pub mod methods;
-pub mod notification;
+mod notification;
 pub mod objects;
 pub mod render;
 mod response;
 
-use std::{collections::BTreeMap, fmt::Debug};
+use std::fmt::Debug;
 
 use reqwest_middleware::ClientWithMiddleware;
 use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use url::Url;
 
-pub use self::bot::Bot as TelegramBot;
+pub use self::{bot::Bot as TelegramBot, notification::Notification as TelegramNotification};
 use crate::{
     prelude::*,
     telegram::{
@@ -50,12 +50,12 @@ impl Telegram {
             url
         };
         let request_body = serde_json::to_value(method)?;
-        let request = self.client.post(url).json(&request_body).timeout(method.timeout());
-        sentry::configure_scope(|scope| {
-            let context = BTreeMap::from([("request.body".to_string(), request_body)]);
-            scope.set_context("telegram", sentry::protocol::Context::Other(context));
-        });
-        let response = request
+        debug!("📤 Calling `{}`: {request_body}", method.name());
+        let response = self
+            .client
+            .post(url)
+            .json(&request_body)
+            .timeout(method.timeout())
             .send()
             .await
             .with_context(|| format!("failed to call `{}`", method.name()))?

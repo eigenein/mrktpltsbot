@@ -10,9 +10,9 @@ use crate::{
     db::{Db, Item, Items, Notifications, SearchQuery, Subscription},
     marketplace::{Marketplace, marktplaats::Marktplaats, vinted::Vinted},
     prelude::{instrument, *},
-    telegram,
     telegram::{
         Telegram,
+        TelegramNotification,
         commands::CommandBuilder,
         objects::ParseMode,
         render,
@@ -114,15 +114,20 @@ impl SearchBot {
                 &item,
                 &ManageSearchQuery::new(&search_query.text, &[&unsubscribe_link]),
             );
-            telegram::notification::Notification::builder()
+            let telegram_notification = TelegramNotification::builder()
                 .chat_id(Cow::Owned(subscription.chat_id.into()))
                 .text(description.into())
                 .maybe_picture_url(item.picture_url.as_ref())
                 .parse_mode(ParseMode::Html)
-                .build()
-                .react_to(&self.telegram)
-                .await?;
-            Notifications(&mut connection).upsert(&notification).await?;
+                .build();
+            match telegram_notification.send_to(&self.telegram).await {
+                Ok(()) => {
+                    Notifications(&mut connection).upsert(&notification).await?;
+                }
+                Err(error) => {
+                    error!("failed to send the notification: {error:#}");
+                }
+            }
         }
 
         info!(subscription.chat_id, search_query.text, "✅ Done");
