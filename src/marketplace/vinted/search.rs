@@ -104,8 +104,7 @@ impl From<User> for crate::marketplace::item::Seller {
 
 #[derive(Debug, Deserialize)]
 pub enum Status {
-    /// FIXME: what's the Dutch alias for that?
-    #[serde(rename = "Not fully functional")]
+    #[serde(rename = "Not fully functional", alias = "Niet helemaal functioneel")]
     NotFullyFunctional,
 
     #[serde(alias = "Veelgebruikt")]
