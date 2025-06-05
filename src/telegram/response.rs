@@ -9,16 +9,16 @@ use crate::prelude::*;
 #[derive(Deserialize)]
 #[must_use]
 #[serde(untagged)]
-pub enum TelegramResult<T> {
+pub enum Response<T> {
     Ok { ok: MustBe!(true), result: T },
     Err { ok: MustBe!(false), description: String, error_code: i32 },
 }
 
-impl<T> From<TelegramResult<T>> for Result<T> {
-    fn from(result: TelegramResult<T>) -> Self {
+impl<T> From<Response<T>> for Result<T> {
+    fn from(result: Response<T>) -> Self {
         match result {
-            TelegramResult::Ok { result, .. } => Ok(result),
-            TelegramResult::Err { error_code, description, .. } => {
+            Response::Ok { result, .. } => Ok(result),
+            Response::Err { error_code, description, .. } => {
                 Err(anyhow!("API error {error_code}: {description}"))
             }
         }
@@ -32,12 +32,12 @@ mod tests {
     #[test]
     fn test_response_ok() -> Result {
         // language=json
-        let response: TelegramResult<u32> = serde_json::from_str(r#"{"ok": true, "result": 42}"#)?;
+        let response: Response<u32> = serde_json::from_str(r#"{"ok": true, "result": 42}"#)?;
         match response {
-            TelegramResult::Ok { result, .. } => {
+            Response::Ok { result, .. } => {
                 assert_eq!(result, 42);
             }
-            TelegramResult::Err { .. } => unreachable!(),
+            Response::Err { .. } => unreachable!(),
         }
         Ok(())
     }

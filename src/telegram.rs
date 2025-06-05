@@ -4,7 +4,7 @@ pub mod methods;
 pub mod notification;
 pub mod objects;
 pub mod render;
-mod result;
+mod response;
 
 use std::fmt::Debug;
 
@@ -19,7 +19,7 @@ use crate::{
     telegram::{
         commands::CommandBuilder,
         methods::{GetMe, Method},
-        result::TelegramResult,
+        response::Response,
     },
 };
 
@@ -46,15 +46,17 @@ impl Telegram {
     {
         let mut url = self.root_url.clone();
         url.set_path(&format!("bot{}/{}", self.token.expose_secret(), method.name()));
-        self.client
+        let response = self
+            .client
             .post(url)
             .json(method)
             .timeout(method.timeout())
             .send()
-            .await?
-            .json::<TelegramResult<R>>()
-            .await?
-            .into()
+            .await
+            .with_context(|| format!("failed to call `{}`", method.name()))?
+            .json::<Response<R>>()
+            .await?;
+        Result::from(response).with_context(|| format!("`{}` failed", method.name()))
     }
 
     #[instrument(skip_all)]
