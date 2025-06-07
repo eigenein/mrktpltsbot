@@ -25,6 +25,8 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
         name: ⚡️ Install Zig
+        with:
+          version: 0.14.0
 
       - name: ⚡️ Install `cargo-zigbuild`
         uses: taiki-e/install-action@v2
