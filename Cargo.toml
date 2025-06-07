@@ -9,7 +9,7 @@ license = "MIT"
 publish = true
 readme = "README.md"
 repository = "https://github.com/eigenein/mrktpltsbot"
-version = "2.1.0-rc.19"
+version = "2.1.0-rc.20"
 rust-version = "1.86"
 
 [badges]
@@ -58,7 +58,7 @@ rust_decimal = "=1.37.1"
 rust_decimal_macros = "=1.37.1"
 seahash = "=4.1.0"
 secrecy = { version = "=0.10.3", features = ["serde"] }
-sentry = { version = "=0.37.0", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "rustls", "tracing"] }
+sentry = { version = "=0.37.0", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "rustls"] }
 serde = "=1.0.219"
 serde_json = "=1.0.140"
 serde_qs = "=0.15.0"

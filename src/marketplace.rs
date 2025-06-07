@@ -28,7 +28,11 @@ pub trait Marketplace {
         limit: Option<usize>,
         into: &mut Vec<Item>,
     ) {
-        match self.search(query).await {
+        match self
+            .search(query)
+            .await
+            .with_context(|| format!("failed to search on {}", type_name::<Self>()))
+        {
             Ok(mut items) => {
                 if let Some(limit) = limit {
                     items.truncate(limit);
@@ -36,7 +40,7 @@ pub trait Marketplace {
                 into.extend(items);
             }
             Err(error) => {
-                error!("‼️ Failed to search on {}: {error:#}", type_name::<Self>());
+                capture_anyhow(&error);
             }
         }
     }

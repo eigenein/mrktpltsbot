@@ -43,7 +43,9 @@ fn main() -> Result {
         .enable_all()
         .build()?
         .block_on(async_main(cli))
-        .inspect_err(|error| error!("💀 Fatal error: {error:#}"))?;
+        .inspect_err(|error| {
+            capture_anyhow(error);
+        })?;
     logging_guards.try_shutdown()
 }
 

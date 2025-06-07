@@ -3,7 +3,6 @@ use std::{borrow::Cow, time::Duration};
 use bon::Builder;
 use chrono::Utc;
 use tokio::time::sleep;
-use tracing::{error, info};
 
 use crate::{
     db,
@@ -47,12 +46,16 @@ impl SearchBot {
         let mut previous = None;
         loop {
             sleep(self.search_interval).await;
-            match self.advance_and_handle(previous.as_ref()).await {
+            match self
+                .advance_and_handle(previous.as_ref())
+                .await
+                .context("failed to handle the next subscription")
+            {
                 Ok(handled) => {
                     previous = handled;
                 }
                 Err(error) => {
-                    error!("‼️ Failed to handle the next subscription: {error:#}");
+                    capture_anyhow(&error);
                 }
             }
         }
@@ -120,12 +123,16 @@ impl SearchBot {
                 .maybe_picture_url(item.picture_url.as_ref())
                 .parse_mode(ParseMode::Html)
                 .build();
-            match telegram_notification.send_to(&self.telegram).await {
+            match telegram_notification
+                .send_to(&self.telegram)
+                .await
+                .context("failed to send the notification")
+            {
                 Ok(()) => {
                     Notifications(&mut connection).upsert(&notification).await?;
                 }
                 Err(error) => {
-                    error!("failed to send the notification: {error:#}");
+                    capture_anyhow(&error);
                 }
             }
         }

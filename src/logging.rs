@@ -2,8 +2,7 @@ use std::{borrow::Cow, io::stderr};
 
 use clap::{crate_name, crate_version};
 use logfire::ShutdownHandler;
-use sentry::{ClientInitGuard, ClientOptions, SessionMode, integrations::tracing::EventFilter};
-use tracing::{Level, Metadata};
+use sentry::{ClientInitGuard, ClientOptions, SessionMode};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -22,18 +21,13 @@ pub fn init(sentry_dsn: Option<&str>, logfire_token: Option<String>) -> Result<L
     let sentry_guard = sentry::init((sentry_dsn, sentry_options));
 
     let stderr_guard = {
-        let sentry_layer =
-            sentry::integrations::tracing::layer().event_filter(event_filter).span_filter(|_| true);
         let (stderr, stderr_guard) = tracing_appender::non_blocking(stderr());
         let subscriber_layer = {
             let format_filter =
                 EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
             tracing_subscriber::fmt::layer().with_writer(stderr).with_filter(format_filter)
         };
-        tracing_subscriber::Registry::default()
-            .with(sentry_layer)
-            .with(subscriber_layer)
-            .try_init()?;
+        tracing_subscriber::Registry::default().with(subscriber_layer).try_init()?;
         stderr_guard
     };
 
@@ -74,14 +68,5 @@ impl LoggingGuards {
             logfire.shutdown()?;
         }
         Ok(())
-    }
-}
-
-#[must_use]
-fn event_filter(metadata: &Metadata) -> EventFilter {
-    match *metadata.level() {
-        Level::ERROR => EventFilter::Exception,
-        Level::WARN => EventFilter::Event,
-        _ => EventFilter::Breadcrumb,
     }
 }

@@ -113,13 +113,18 @@ impl Bot {
             .allowed_updates(&[AllowedUpdate::Message])
             .build();
 
-        let updates: Vec<Update> = match self.telegram.call(&get_updates).await {
+        let updates: Vec<Update> = match self
+            .telegram
+            .call(&get_updates)
+            .await
+            .context("failed to fetch Telegram updates")
+        {
             Ok(updates) => {
                 self.heartbeat.check_in().await;
                 updates
             }
             Err(error) => {
-                error!("‼️ Failed to fetch Telegram updates: {error:#}");
+                capture_anyhow(&error);
                 return offset;
             }
         };
@@ -141,11 +146,18 @@ impl Bot {
                 warn!(message.id, "⚠️ Username chat IDs are not supported");
                 continue;
             };
-            if let Err(error) = self.on_message(chat_id, message.id, text.trim()).await {
-                error!(%chat_id, message.id, "‼️ Failed to handle the message: {error:#}");
+            if let Err(error) =
+                self.on_message(chat_id, message.id, text.trim()).await.with_context(|| {
+                    format!("failed to handle the message #{} from chat #{chat_id}", message.id)
+                })
+            {
+                let error_id = capture_anyhow(&error);
                 let _ = SendMessage::builder()
                     .chat_id(Cow::Owned(ChatId::Integer(chat_id)))
-                    .text("💥 An internal error occurred and has been logged")
+                    .parse_mode(ParseMode::Html)
+                    .text(format!(
+                        "💥 An internal error occurred and has been logged <code>{error_id}</code>"
+                    ))
                     .build()
                     .call_and_discard_on(&self.telegram)
                     .await;
