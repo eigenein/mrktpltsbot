@@ -18,6 +18,7 @@ is-it-maintained-open-issues = { repository = "eigenein/mrktpltsbot" }
 
 [profile.release]
 codegen-units = 1
+debug = "full"
 lto = "thin"
 
 [lints.rust]
