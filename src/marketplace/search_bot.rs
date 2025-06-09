@@ -69,6 +69,7 @@ impl SearchBot {
     /// # Returns
     ///
     /// Handled subscription entry as a next pointer.
+    #[instrument(name = "⏩ Handling next subscription…", skip_all)]
     async fn advance_and_handle(
         &self,
         previous: Option<&(Subscription, SearchQuery)>,
@@ -92,16 +93,20 @@ impl SearchBot {
     }
 
     /// Handle the specified subscription.
+    #[instrument(
+        name = "🏭 Handling subscription…",
+        skip_all,
+        fields(
+            subscription.chat_id = subscription.chat_id,
+            search_query.hash = search_query.hash,
+            search_query.text = search_query.text,
+        ),
+    )]
     async fn handle_subscription(
         &self,
         subscription: &Subscription,
         search_query: &SearchQuery,
     ) -> Result {
-        info!(
-            "🏭 Handling subscription…",
-            chat_id = subscription.chat_id,
-            text = &search_query.text,
-        );
         let unsubscribe_link = self.command_builder.unsubscribe_link(search_query.hash);
 
         let mut items = Vec::new();

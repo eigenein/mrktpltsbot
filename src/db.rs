@@ -34,8 +34,8 @@ pub struct Db(Arc<Mutex<SqliteConnection>>);
 
 impl Db {
     /// TODO: change `Path` into `AsRef<Path>`.
+    #[instrument(name = "💾 Opening the database…")]
     pub async fn try_new(path: &Path) -> Result<Self> {
-        let _span = span!("💾 Opening the database…", path = path.display().to_string()).entered();
         let mut connection = SqliteConnectOptions::new()
             .create_if_missing(true)
             .filename(path)
@@ -90,6 +90,12 @@ impl Db {
     }
 
     /// Retrieve the next subscription, or [`None`] – if `current` is the last subscription.
+    #[instrument(
+        name = "💾 Fetching next subscription…",
+        level = Level::DEBUG,
+        skip_all,
+        fields(current.query_hash = current.query_hash, current.chat_id = current.chat_id),
+    )]
     pub async fn next_subscription(
         &self,
         current: &Subscription,
@@ -102,12 +108,6 @@ impl Db {
             ORDER BY subscriptions.chat_id, subscriptions.query_hash
             LIMIT 1
         ";
-
-        debug!(
-            "💾 Fetching next subscription…",
-            query_hash = current.query_hash,
-            chat_id = current.chat_id,
-        );
         sqlx::query(QUERY)
             .bind(current.chat_id)
             .bind(current.query_hash)
