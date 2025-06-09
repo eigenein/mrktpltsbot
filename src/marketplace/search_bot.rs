@@ -97,14 +97,19 @@ impl SearchBot {
         subscription: &Subscription,
         search_query: &SearchQuery,
     ) -> Result {
-        info!("🏭 Handling…", chat_id = subscription.chat_id, text = &search_query.text);
+        let _span = span!(
+            "🏭 Handling subscription…",
+            chat_id = subscription.chat_id,
+            text = &search_query.text,
+        )
+        .entered();
         let unsubscribe_link = self.command_builder.unsubscribe_link(search_query.hash);
 
         let mut items = Vec::new();
         self.marktplaats.search_and_extend_infallible(search_query, None, &mut items).await;
         self.vinted.search_and_extend_infallible(search_query, None, &mut items).await;
 
-        info!("🛍️ Fetched from all marketplaces", n_items = items.len());
+        info!("🛍️ Fetched items from all marketplaces", n_items = items.len());
         for item in items {
             let mut connection = self.db.connection().await;
             Items(&mut connection).upsert(Item { id: &item.id, updated_at: Utc::now() }).await?;
