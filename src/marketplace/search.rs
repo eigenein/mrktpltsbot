@@ -1,5 +1,6 @@
 use std::{borrow::Cow, collections::BTreeSet};
 
+use deunicode::deunicode;
 use itertools::Itertools;
 
 #[derive(Clone, Debug)]
@@ -9,9 +10,13 @@ pub struct NormalisedQuery {
 }
 
 impl NormalisedQuery {
+    pub fn normalise_token(token: &str) -> String {
+        deunicode(&token.to_lowercase())
+    }
+
     pub fn parse(text: &str) -> Self {
         let mut this = Self { include: BTreeSet::new(), exclude: BTreeSet::new() };
-        for token in text.split_whitespace().map(str::to_lowercase).sorted() {
+        for token in text.split_whitespace().map(Self::normalise_token).sorted() {
             if let Some(token) = token.strip_prefix('-') {
                 this.exclude.insert(token.to_string());
             } else {
@@ -21,7 +26,8 @@ impl NormalisedQuery {
         this
     }
 
-    pub fn search_text(&self) -> String {
+    /// Generate search text for marketplace from the included tokens.
+    pub fn to_search_text(&self) -> String {
         self.include.iter().join(" ")
     }
 
@@ -32,7 +38,7 @@ impl NormalisedQuery {
     }
 
     pub fn matches<'a>(&self, terms: impl IntoIterator<Item = &'a str>) -> bool {
-        let terms: BTreeSet<_> = terms.into_iter().map(str::to_lowercase).collect();
+        let terms: BTreeSet<_> = terms.into_iter().map(Self::normalise_token).collect();
         self.include.is_subset(&terms) && self.exclude.is_disjoint(&terms)
     }
 }
@@ -55,9 +61,15 @@ mod tests {
     }
 
     #[test]
+    fn deunicode_ok() {
+        let query = NormalisedQuery::parse("SKÅDIS");
+        assert_eq!(query.include.iter().collect_vec(), &["skadis"]);
+    }
+
+    #[test]
     fn search_text_ok() {
         let query = NormalisedQuery::parse("-samsung smartphone");
-        assert_eq!(query.search_text(), "smartphone");
+        assert_eq!(query.to_search_text(), "smartphone");
     }
 
     #[test]

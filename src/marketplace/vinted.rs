@@ -65,8 +65,8 @@ impl Marketplace for Vinted {
             warn!("⚠️ Run `mrktpltsbot vinted authenticate` to use Vinted search");
             return Ok(vec![]);
         };
-        let query = query.normalised_query();
-        let search_text = query.search_text();
+        let query = query.to_normalised_query();
+        let search_text = query.to_search_text();
         let result = SearchRequest::builder()
             .search_text(&search_text)
             .per_page(self.search_limit)

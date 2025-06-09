@@ -38,8 +38,8 @@ impl Marketplace for Marktplaats {
 
     /// Search Marktplaats.
     async fn search(&self, query: &SearchQuery) -> Result<Vec<Item>> {
-        let query = query.normalised_query();
-        let search_text = query.search_text();
+        let query = query.to_normalised_query();
+        let search_text = query.to_search_text();
         let listings = SearchRequest::builder()
             .query(&search_text)
             .limit(self.search_limit)
