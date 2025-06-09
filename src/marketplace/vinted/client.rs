@@ -17,7 +17,6 @@ use crate::{
 pub struct VintedClient(pub ClientWithMiddleware);
 
 impl VintedClient {
-    #[instrument(skip_all, err(level = Level::DEBUG))]
     pub async fn refresh_token(&self, refresh_token: &str) -> Result<AuthenticationTokens> {
         info!("🔐 Refreshing token…");
         let response = self
@@ -42,13 +41,16 @@ impl VintedClient {
             .build())
     }
 
-    #[instrument(skip_all)]
     pub async fn search(
         &self,
         access_token: &str,
         request: &SearchRequest<'_>,
     ) -> Result<SearchResults, VintedError> {
-        info!(query = request.search_text, limit = request.per_page, "🔎 Searching…");
+        info!(
+            "🔎 Searching…",
+            query = request.search_text.to_string(),
+            limit = i64::from(request.per_page),
+        );
         let url = {
             let query =
                 serde_qs::to_string(request).context("failed to serialize the search request")?;

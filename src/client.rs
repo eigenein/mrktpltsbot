@@ -18,9 +18,9 @@ const USER_AGENT: &str = concat!(
     " (Rust; https://github.com/eigenein/mrktpltsbot)",
 );
 
-#[instrument(skip_all)]
 pub fn try_new(connection_verbose: bool) -> Result<ClientWithMiddleware> {
-    info!(connection_verbose, "🌏 Instantiating client…");
+    let _span =
+        span!("🌏 Instantiating client…", connection_verbose = connection_verbose).entered();
     let mut headers = HeaderMap::new();
     headers.insert(header::USER_AGENT, HeaderValue::from_static(USER_AGENT));
     let client = reqwest::Client::builder()

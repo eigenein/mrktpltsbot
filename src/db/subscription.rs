@@ -11,8 +11,12 @@ pub struct Subscription {
 pub struct Subscriptions<'a>(pub &'a mut SqliteConnection);
 
 impl Subscriptions<'_> {
-    #[instrument(skip_all, fields(query_hash = subscription.query_hash, chat_id = subscription.chat_id))]
     pub async fn upsert(&mut self, subscription: Subscription) -> Result {
+        debug!(
+            "💾 Upserting subscription…",
+            query_hash = subscription.query_hash,
+            chat_id = subscription.chat_id,
+        );
         sqlx::query(
             // language=sql
             "INSERT INTO subscriptions (query_hash, chat_id) VALUES (?1, ?2) ON CONFLICT DO NOTHING",
@@ -26,8 +30,12 @@ impl Subscriptions<'_> {
         Ok(())
     }
 
-    #[instrument(skip_all, fields(query_hash = subscription.query_hash, chat_id = subscription.chat_id))]
     pub async fn delete(&mut self, subscription: Subscription) -> Result {
+        debug!(
+            "💾 Deleting subscription…",
+            query_hash = subscription.query_hash,
+            chat_id = subscription.chat_id,
+        );
         sqlx::query(
             // language=sql
             "DELETE FROM subscriptions WHERE query_hash = ?1 AND chat_id = ?2",

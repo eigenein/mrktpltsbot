@@ -12,8 +12,12 @@ pub struct Notification {
 pub struct Notifications<'a>(pub &'a mut SqliteConnection);
 
 impl Notifications<'_> {
-    #[instrument(skip_all, fields(item_id = notification.item_id, chat_id = notification.chat_id))]
     pub async fn upsert(&mut self, notification: &Notification) -> Result {
+        debug!(
+            "💾 Upserting notification…",
+            item_id = &notification.item_id,
+            chat_id = notification.chat_id,
+        );
         sqlx::query(
             // language=sql
             "INSERT INTO notifications (item_id, chat_id) VALUES (?1, ?2) ON CONFLICT DO NOTHING",
@@ -27,11 +31,16 @@ impl Notifications<'_> {
         Ok(())
     }
 
-    #[instrument(skip_all, fields(item_id = notification.item_id, chat_id = notification.chat_id))]
     pub async fn exists(&mut self, notification: &Notification) -> Result<bool> {
         // language=sql
         const QUERY: &str =
             "SELECT EXISTS(SELECT 1 FROM notifications WHERE item_id = ?1 AND chat_id = ?2)";
+
+        debug!(
+            "💾 Checking notification…",
+            item_id = &notification.item_id,
+            chat_id = notification.chat_id,
+        );
         sqlx::query_scalar(QUERY)
             .bind(&notification.item_id)
             .bind(notification.chat_id)

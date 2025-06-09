@@ -10,6 +10,7 @@ use crate::{
     cli::{Args, Command, RunArgs, VintedCommand},
     db::{Db, KeyValues},
     heartbeat::Heartbeat,
+    logging::Logging,
     marketplace::{
         Marktplaats,
         MarktplaatsClient,
@@ -35,9 +36,9 @@ mod telegram;
 fn main() -> Result {
     let dotenv_result = dotenvy::dotenv();
     let cli = Args::parse();
-    let logging_guards = logging::init(cli.sentry_dsn.as_deref(), cli.logfire_token.clone())?;
+    let logging = Logging::init(cli.sentry_dsn.as_deref())?;
     if let Err(error) = dotenv_result {
-        warn!("⚠️ Could not load `.env`: {error:#}");
+        log::warn!("⚠️ Could not load `.env`: {error:#}");
     }
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -46,7 +47,7 @@ fn main() -> Result {
         .inspect_err(|error| {
             capture_anyhow(error);
         })?;
-    logging_guards.try_shutdown()
+    logging.try_shutdown()
 }
 
 async fn async_main(cli: Args) -> Result {
@@ -121,7 +122,7 @@ async fn manage_vinted(db: Db, client: ClientWithMiddleware, command: VintedComm
                 KeyValues(&mut *db.connection().await).fetch().await?;
             match tokens {
                 Some(tokens) => {
-                    info!(tokens.access, tokens.refresh, "🔑");
+                    info!("🔑", tokens.access = tokens.access, tokens.refresh = tokens.refresh);
                 }
                 None => {
                     info!("🔒 There are no stored tokens");

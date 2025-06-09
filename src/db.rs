@@ -34,8 +34,8 @@ pub struct Db(Arc<Mutex<SqliteConnection>>);
 
 impl Db {
     /// TODO: change `Path` into `AsRef<Path>`.
-    #[instrument(skip_all)]
     pub async fn try_new(path: &Path) -> Result<Self> {
+        let _span = span!("💾 Opening the database…", path = path.display().to_string()).entered();
         let mut connection = SqliteConnectOptions::new()
             .create_if_missing(true)
             .filename(path)
@@ -43,7 +43,7 @@ impl Db {
             .await
             .with_context(|| format!("failed to open database `{}`", path.display()))?;
         MIGRATOR.run(&mut connection).await.context("failed to migrate the database")?;
-        info!(path = %path.display(), canonical = %path.canonicalize()?.display(), "✅ The database is ready");
+        info!("✅ The database is ready");
         Ok(Self(Arc::new(Mutex::new(connection))))
     }
 
@@ -72,7 +72,6 @@ impl Db {
     }
 
     /// Retrieve the first subscription, or `None` – if there are no subscriptions.
-    #[instrument(skip_all)]
     pub async fn first_subscription(&self) -> Result<Option<(Subscription, SearchQuery)>> {
         // language=sql
         const QUERY: &str = r"
@@ -91,7 +90,6 @@ impl Db {
     }
 
     /// Retrieve the next subscription, or [`None`] – if `current` is the last subscription.
-    #[instrument(skip_all, fields(query_hash = current.query_hash, chat_id = current.chat_id))]
     pub async fn next_subscription(
         &self,
         current: &Subscription,
@@ -105,6 +103,11 @@ impl Db {
             LIMIT 1
         ";
 
+        debug!(
+            "💾 Fetching next subscription…",
+            query_hash = current.query_hash,
+            chat_id = current.chat_id,
+        );
         sqlx::query(QUERY)
             .bind(current.chat_id)
             .bind(current.query_hash)

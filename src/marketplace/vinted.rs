@@ -90,7 +90,12 @@ impl Marketplace for Vinted {
             })
             .map(Item::from)
             .collect::<Vec<Item>>();
-        info!(search_text, n_fetched, n_filtered = items.len(), "🛍️ Fetched");
+        info!(
+            "🛍️ Fetched",
+            search_text = search_text,
+            n_fetched = n_fetched,
+            n_filtered = items.len(),
+        );
         self.check_in().await;
         Ok(items)
     }

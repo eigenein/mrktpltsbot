@@ -13,7 +13,7 @@ pub struct Args {
 
     /// Pydantic Logfire token: <https://logfire.pydantic.dev/docs/how-to-guides/create-write-tokens/>.
     #[clap(long, env = "LOGFIRE_TOKEN", hide_env_values = true)]
-    pub logfire_token: Option<String>,
+    _logfire_token: Option<String>,
 
     /// SQLite database path.
     #[expect(clippy::doc_markdown)]

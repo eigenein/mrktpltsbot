@@ -37,25 +37,25 @@ impl SearchQuery {
 pub struct SearchQueries<'a>(pub &'a mut SqliteConnection);
 
 impl SearchQueries<'_> {
-    #[instrument(skip_all, fields(text = query.text, hash = query.hash))]
     pub async fn upsert(&mut self, query: &SearchQuery) -> Result {
         // language=sql
         const QUERY: &str = "INSERT INTO search_queries (hash, text) VALUES (?1, ?2) ON CONFLICT DO UPDATE SET text = ?2";
+
+        debug!("💾 Upserting search query…", text = &query.text, hash = query.hash);
         sqlx::query(QUERY)
             .bind(query.hash)
             .bind(&query.text)
             .execute(&mut *self.0)
             .await
             .with_context(|| format!("failed to upsert the search query `{}`", query.text))?;
-
         Ok(())
     }
 
-    #[instrument(skip_all, fields(hash = hash))]
     pub async fn fetch_text(&mut self, hash: i64) -> Result<String> {
         // language=sql
         const QUERY: &str = "SELECT text FROM search_queries WHERE hash = ?1";
 
+        debug!("💾 Fetching search query…", hash = hash);
         sqlx::query_scalar(QUERY)
             .bind(hash)
             .fetch_one(&mut *self.0)

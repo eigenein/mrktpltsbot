@@ -11,13 +11,12 @@ pub struct MarktplaatsClient(pub ClientWithMiddleware);
 
 impl MarktplaatsClient {
     /// Search Marktplaats.
-    #[instrument(skip_all)]
     pub async fn search(&self, request: &SearchRequest<'_>) -> Result<Listings> {
         info!(
-            query = request.query,
-            limit = request.limit,
-            in_title_and_description = request.search_in_title_and_description,
             "🔎 Searching…",
+            query = request.query.map(ToString::to_string),
+            limit = request.limit.map(i64::from),
+            in_title_and_description = request.search_in_title_and_description,
         );
         let url = {
             let query =

@@ -93,7 +93,7 @@ impl Bot {
 impl Bot {
     /// Run the bot indefinitely.
     pub async fn run(mut self) {
-        info!(me = self.command_builder.url().as_str(), "🔄 Running Telegram bot…");
+        info!("🔄 Running Telegram bot…", me = self.command_builder.url().to_string());
         let mut offset = 0;
         loop {
             offset = self.handle_updates(offset).await;
@@ -105,7 +105,6 @@ impl Bot {
     /// # Returns
     ///
     /// New offset.
-    #[instrument(skip_all)]
     async fn handle_updates(&mut self, offset: u64) -> u64 {
         let get_updates = GetUpdates::builder()
             .offset(offset)
@@ -133,18 +132,21 @@ impl Bot {
         if updates.is_empty() {
             debug!("📭 Received no Telegram updates");
         } else {
-            info!(n = updates.len(), new_offset, "📬 Received Telegram updates");
+            info!("📬 Received Telegram updates", n_updates = updates.len());
         }
 
         for update in updates {
             let UpdatePayload::Message(message) = update.payload else { continue };
             let (Some(chat), Some(text)) = (message.chat, message.text) else {
-                warn!(message.id, "⚠️ Message without an associated chat or text");
+                warn!("⚠️ Received message without an associated chat or text");
                 continue;
             };
-            let ChatId::Integer(chat_id) = chat.id else {
-                warn!(message.id, "⚠️ Username chat IDs are not supported");
-                continue;
+            let chat_id = match chat.id {
+                ChatId::Integer(chat_id) => chat_id,
+                ChatId::Username(username) => {
+                    warn!("⚠️ Username chat IDs are not supported", username = username);
+                    continue;
+                }
             };
             if let Err(error) =
                 self.on_message(chat_id, message.id, text.trim()).await.with_context(|| {
@@ -167,10 +169,13 @@ impl Bot {
         new_offset
     }
 
-    #[instrument(skip_all)]
     async fn on_message(&mut self, chat_id: i64, message_id: u64, text: &str) -> Result {
         if !self.authorized_chat_ids.contains(&chat_id) {
-            warn!(chat_id, message_id, text, "⚠️ Received message from an unauthorized chat");
+            warn!(
+                "⚠️ Received message from an unauthorized chat",
+                chat_id = chat_id,
+                text = text.to_string(),
+            );
             let chat_id = ChatId::Integer(chat_id);
             let text = render::unauthorized(&chat_id).render().into_string();
             let _ =
@@ -193,7 +198,6 @@ impl Bot {
     /// Handle the search request from Telegram.
     ///
     /// A search request is just a message that is not a command.
-    #[instrument(skip_all)]
     async fn on_search(
         &mut self,
         query: &str,
@@ -205,7 +209,7 @@ impl Bot {
         let mut items = Vec::new();
         self.marktplaats.search_and_extend_infallible(&query, Some(1), &mut items).await;
         self.vinted.search_and_extend_infallible(&query, Some(1), &mut items).await;
-        info!(query.hash, n_items = items.len(), query.text, "🛍️");
+        info!("🛍️", query.hash = query.hash, n_items = items.len(), query.text = &query.text);
 
         SearchQueries(&mut *self.db.connection().await).upsert(&query).await?;
 
@@ -248,7 +252,6 @@ impl Bot {
         Ok(())
     }
 
-    #[instrument(skip_all)]
     async fn on_command(
         &self,
         text: &str,
@@ -275,7 +278,7 @@ impl Bot {
         } else if let Some(payload) = text.strip_prefix("/start ") {
             // Command with a payload.
             let command = CommandPayload::from_base64(payload)?;
-            debug!(?command, "❕ Received command");
+            debug!("❕ Received command");
 
             if command.manage.is_some() {
                 self.on_manage_subscriptions(chat_id).await?;
@@ -290,7 +293,7 @@ impl Bot {
 
                 match SubscriptionAction::try_from(subscription_command.action) {
                     Ok(SubscriptionAction::Subscribe) => {
-                        info!(subscription.query_hash, "➕ Subscribing");
+                        info!("➕ Subscribing", query_hash = subscription.query_hash);
                         subscriptions.upsert(subscription).await?;
                         let unsubscribe_link =
                             self.command_builder.unsubscribe_link(subscription.query_hash);
@@ -307,7 +310,7 @@ impl Bot {
                     }
 
                     Ok(SubscriptionAction::Unsubscribe) => {
-                        info!(subscription.query_hash, "➖ Unsubscribing");
+                        info!("➖ Unsubscribing", query_hash = subscription.query_hash);
                         subscriptions.delete(subscription).await?;
                         let resubscribe_link =
                             self.command_builder.resubscribe_link(subscription.query_hash);
@@ -340,7 +343,6 @@ impl Bot {
     }
 
     /// List the user's subscriptions.
-    #[instrument(skip_all)]
     async fn on_manage_subscriptions(&self, chat_id: i64) -> Result {
         let subscriptions = self.db.subscriptions_of(chat_id).await?;
         let markup = html! {

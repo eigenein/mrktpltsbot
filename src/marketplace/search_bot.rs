@@ -8,7 +8,7 @@ use crate::{
     db,
     db::{Db, Item, Items, Notifications, SearchQuery, Subscription},
     marketplace::{Marketplace, marktplaats::Marktplaats, vinted::Vinted},
-    prelude::{instrument, *},
+    prelude::*,
     telegram::{
         Telegram,
         TelegramNotification,
@@ -42,7 +42,10 @@ pub struct SearchBot {
 impl SearchBot {
     /// Run the bot indefinitely.
     pub async fn run(mut self) {
-        info!(?self.search_interval, "🔄 Running the search bot…");
+        info!(
+            "🔄 Running the search bot…",
+            search_interval_secs = self.search_interval.as_secs_f64(),
+        );
         let mut previous = None;
         loop {
             sleep(self.search_interval).await;
@@ -89,30 +92,33 @@ impl SearchBot {
     }
 
     /// Handle the specified subscription.
-    #[instrument(skip_all)]
     async fn handle_subscription(
         &mut self,
         subscription: &Subscription,
         search_query: &SearchQuery,
     ) -> Result {
-        info!(subscription.chat_id, search_query.text, "🏭 Handling…");
+        info!("🏭 Handling…", chat_id = subscription.chat_id, text = &search_query.text);
         let unsubscribe_link = self.command_builder.unsubscribe_link(search_query.hash);
 
         let mut items = Vec::new();
         self.marktplaats.search_and_extend_infallible(search_query, None, &mut items).await;
         self.vinted.search_and_extend_infallible(search_query, None, &mut items).await;
 
-        info!(n_items = items.len(), "🛍️ Fetched from all marketplaces");
+        info!("🛍️ Fetched from all marketplaces", n_items = items.len());
         for item in items {
             let mut connection = self.db.connection().await;
             Items(&mut connection).upsert(Item { id: &item.id, updated_at: Utc::now() }).await?;
             let notification =
                 db::Notification { item_id: item.id.clone(), chat_id: subscription.chat_id };
             if Notifications(&mut connection).exists(&notification).await? {
-                trace!(subscription.chat_id, item.id, "✅ Notification was already sent");
+                debug!(
+                    "✅ Notification was already sent",
+                    chat_id = subscription.chat_id,
+                    item_id = item.id,
+                );
                 continue;
             }
-            info!(subscription.chat_id, notification.item_id, "✉️ Notifying…");
+            info!("✉️ Notifying…", chat_id = subscription.chat_id, item_id = &notification.item_id);
             let description = render::item_description(
                 &item,
                 &ManageSearchQuery::new(&search_query.text, &[&unsubscribe_link]),
@@ -137,7 +143,7 @@ impl SearchBot {
             }
         }
 
-        info!(subscription.chat_id, search_query.text, "✅ Done");
+        info!("✅ Done", chat_id = subscription.chat_id, text = &search_query.text);
         Ok(())
     }
 }

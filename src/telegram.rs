@@ -38,7 +38,6 @@ impl Telegram {
     }
 
     /// Call the Telegram Bot API method.
-    #[instrument(skip_all)]
     pub async fn call<M, R>(&self, method: &M) -> Result<R>
     where
         M: Method + ?Sized,
@@ -50,7 +49,7 @@ impl Telegram {
             url
         };
         let request_body = serde_json::to_value(method)?;
-        debug!("📤 Calling `{}`: {request_body}", method.name());
+        debug!("📤 Calling…", method.name = method.name(), request_body = request_body.to_string());
         let response = self
             .client
             .post(url)
@@ -64,7 +63,6 @@ impl Telegram {
         Result::from(response).with_context(|| format!("`{}` failed", method.name()))
     }
 
-    #[instrument(skip_all)]
     pub async fn command_builder(&self) -> Result<CommandBuilder> {
         let me = GetMe
             .call_on(self)

@@ -12,13 +12,18 @@ pub struct Item<'a> {
 pub struct Items<'a>(pub &'a mut SqliteConnection);
 
 impl Items<'_> {
-    #[instrument(skip_all, fields(id = item.id, updated_at = ?item.updated_at))]
     pub async fn upsert(&mut self, item: Item<'_>) -> Result {
         // language=sql
         const QUERY: &str = "
             INSERT INTO items (id, updated_at) VALUES (?1, ?2)
             ON CONFLICT DO UPDATE SET updated_at = ?2
         ";
+
+        debug!(
+            "💾 Upserting item…",
+            id = item.id.to_string(),
+            updated_at = item.updated_at.timestamp(),
+        );
         sqlx::query(QUERY)
             .bind(item.id)
             .bind(item.updated_at)

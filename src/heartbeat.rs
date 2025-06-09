@@ -13,7 +13,7 @@ impl Heartbeat {
 
     pub async fn check_in(&self) {
         if let Err(error) = self.fallible_check_in().await {
-            warn!("💔 Failed to send the heartbeat: {error:#}");
+            log::warn!("💔 Failed to send the heartbeat: {error:#}");
         }
     }
 

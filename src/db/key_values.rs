@@ -6,13 +6,14 @@ use crate::prelude::*;
 pub struct KeyValues<'a>(pub &'a mut SqliteConnection);
 
 impl KeyValues<'_> {
-    #[instrument(skip_all, fields(key = M::KEY, value = ?value))]
     pub async fn upsert<M: KeyedMessage>(&mut self, value: &M) -> Result {
         // language=sql
         const QUERY: &str = "
             INSERT INTO key_values (key, value) VALUES (?1, ?2)
             ON CONFLICT DO UPDATE SET value = ?2
         ";
+
+        debug!("💾 Upserting key-value…", key = M::KEY);
         sqlx::query(QUERY)
             .bind(M::KEY)
             .bind(value.encode_to_vec())
@@ -23,11 +24,11 @@ impl KeyValues<'_> {
         Ok(())
     }
 
-    #[instrument(skip_all, fields(key = V::KEY), ret(level = Level::TRACE))]
     pub async fn fetch<V: Default + KeyedMessage>(&mut self) -> Result<Option<V>> {
         // language=sql
         const QUERY: &str = "SELECT value FROM key_values WHERE key = ?1";
 
+        debug!("💾 Fetching value…", key = V::KEY);
         let value: Option<Vec<u8>> = sqlx::query_scalar(QUERY)
             .bind(V::KEY)
             .fetch_optional(&mut *self.0)
