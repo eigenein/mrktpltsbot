@@ -47,7 +47,7 @@ impl VintedClient {
         request: &SearchRequest<'_>,
     ) -> Result<SearchResults, VintedError> {
         info!(
-            "🔎 Searching…",
+            "🔎 Searching on Vinted…",
             query = request.search_text.to_string(),
             limit = i64::from(request.per_page),
         );

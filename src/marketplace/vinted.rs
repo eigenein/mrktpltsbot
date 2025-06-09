@@ -91,7 +91,7 @@ impl Marketplace for Vinted {
             .map(Item::from)
             .collect::<Vec<Item>>();
         info!(
-            "🛍️ Fetched items",
+            "🛍️ Fetched from Vinted",
             search_text = search_text,
             n_fetched = n_fetched,
             n_filtered = items.len(),

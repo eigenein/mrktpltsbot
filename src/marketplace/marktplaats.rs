@@ -49,7 +49,7 @@ impl Marketplace for Marktplaats {
             .map(TryInto::<Item>::try_into)
             .collect::<Result<Vec<Item>>>()?;
         info!(
-            "🛍️ Fetched items",
+            "🛍️ Fetched from Marktplaats",
             search_text = search_text,
             n_fetched = n_fetched,
             n_filtered = items.len(),

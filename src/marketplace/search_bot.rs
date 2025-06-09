@@ -97,12 +97,11 @@ impl SearchBot {
         subscription: &Subscription,
         search_query: &SearchQuery,
     ) -> Result {
-        let _span = span!(
+        info!(
             "🏭 Handling subscription…",
             chat_id = subscription.chat_id,
             text = &search_query.text,
-        )
-        .entered();
+        );
         let unsubscribe_link = self.command_builder.unsubscribe_link(search_query.hash);
 
         let mut items = Vec::new();
