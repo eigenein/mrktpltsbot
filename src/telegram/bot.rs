@@ -92,7 +92,7 @@ impl Bot {
 
 impl Bot {
     /// Run the bot indefinitely.
-    pub async fn run(mut self) {
+    pub async fn run(self) {
         info!("🔄 Running Telegram bot…", me = self.command_builder.url().to_string());
         let mut offset = 0;
         loop {
@@ -105,7 +105,7 @@ impl Bot {
     /// # Returns
     ///
     /// New offset.
-    async fn handle_updates(&mut self, offset: u64) -> u64 {
+    async fn handle_updates(&self, offset: u64) -> u64 {
         let get_updates = GetUpdates::builder()
             .offset(offset)
             .timeout_secs(self.poll_timeout_secs)
@@ -169,7 +169,7 @@ impl Bot {
         new_offset
     }
 
-    async fn on_message(&mut self, chat_id: i64, message_id: u64, text: &str) -> Result {
+    async fn on_message(&self, chat_id: i64, message_id: u64, text: &str) -> Result {
         if !self.authorized_chat_ids.contains(&chat_id) {
             warn!(
                 "⚠️ Received message from an unauthorized chat",
@@ -199,7 +199,7 @@ impl Bot {
     ///
     /// A search request is just a message that is not a command.
     async fn on_search(
-        &mut self,
+        &self,
         query: &str,
         chat_id: i64,
         reply_parameters: ReplyParameters,

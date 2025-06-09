@@ -41,7 +41,7 @@ pub struct SearchBot {
 
 impl SearchBot {
     /// Run the bot indefinitely.
-    pub async fn run(mut self) {
+    pub async fn run(self) {
         info!(
             "🔄 Running the search bot…",
             search_interval_secs = self.search_interval.as_secs_f64(),
@@ -70,7 +70,7 @@ impl SearchBot {
     ///
     /// Handled subscription entry as a next pointer.
     async fn advance_and_handle(
-        &mut self,
+        &self,
         previous: Option<&(Subscription, SearchQuery)>,
     ) -> Result<Option<(Subscription, SearchQuery)>> {
         let current = match previous {
@@ -93,7 +93,7 @@ impl SearchBot {
 
     /// Handle the specified subscription.
     async fn handle_subscription(
-        &mut self,
+        &self,
         subscription: &Subscription,
         search_query: &SearchQuery,
     ) -> Result {

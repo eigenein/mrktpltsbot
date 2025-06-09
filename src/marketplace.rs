@@ -23,7 +23,7 @@ pub trait Marketplace {
     async fn check_in(&self);
 
     async fn search_and_extend_infallible(
-        &mut self,
+        &self,
         query: &SearchQuery,
         limit: Option<usize>,
         into: &mut Vec<Item>,
@@ -45,5 +45,5 @@ pub trait Marketplace {
         }
     }
 
-    async fn search(&mut self, query: &SearchQuery) -> Result<Vec<Item>>;
+    async fn search(&self, query: &SearchQuery) -> Result<Vec<Item>>;
 }

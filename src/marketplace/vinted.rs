@@ -49,7 +49,7 @@ impl Marketplace for Vinted {
         self.heartbeat.check_in().await;
     }
 
-    async fn search(&mut self, query: &SearchQuery) -> Result<Vec<Item>> {
+    async fn search(&self, query: &SearchQuery) -> Result<Vec<Item>> {
         let Some(auth_tokens) =
             KeyValues(&mut *self.db.connection().await).fetch::<AuthenticationTokens>().await?
         else {
