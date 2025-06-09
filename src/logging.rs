@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use clap::{crate_name, crate_version};
 use logfire::{ShutdownHandler, config::SendToLogfire};
 use sentry::{ClientInitGuard, ClientOptions, IntoDsn, SessionMode};
+use tracing::level_filters::LevelFilter;
 
 use crate::prelude::*;
 
@@ -29,6 +30,7 @@ impl Logging {
 
         let logfire_handler = logfire::configure()
             .install_panic_handler()
+            .with_default_level_filter(LevelFilter::INFO)
             .send_to_logfire(SendToLogfire::IfTokenPresent)
             .finish()?;
 
