@@ -12,6 +12,7 @@ use crate::{
     heartbeat::Heartbeat,
     logging::Logging,
     marketplace::{
+        Marketplaces,
         Marktplaats,
         MarktplaatsClient,
         SearchBot,
@@ -80,13 +81,14 @@ async fn run(db: Db, client: ClientWithMiddleware, args: RunArgs) -> Result {
         .heartbeat(Heartbeat::new(client.clone(), args.vinted.heartbeat_url))
         .build();
 
+    let marketplaces = Marketplaces { marktplaats, vinted };
+
     // Telegram bot:
     let telegram_bot = TelegramBot::builder()
         .telegram(telegram.clone())
         .authorized_chat_ids(args.telegram.authorized_chat_ids.into_iter().collect())
         .db(db.clone())
-        .marktplaats(marktplaats.clone())
-        .vinted(vinted.clone())
+        .marketplaces(marketplaces.clone())
         .poll_timeout_secs(args.telegram.poll_timeout_secs)
         .heartbeat(Heartbeat::new(client, args.telegram.heartbeat_url))
         .command_builder(command_builder.clone())
@@ -97,8 +99,7 @@ async fn run(db: Db, client: ClientWithMiddleware, args: RunArgs) -> Result {
     let search_bot = SearchBot::builder()
         .db(db)
         .search_interval(Duration::from_secs(args.search_interval_secs))
-        .marktplaats(marktplaats)
-        .vinted(vinted)
+        .marketplaces(marketplaces)
         .telegram(telegram)
         .command_builder(command_builder)
         .build();

@@ -1,4 +1,7 @@
-use std::iter::once;
+use std::{
+    fmt::{Display, Formatter},
+    iter::once,
+};
 
 use async_trait::async_trait;
 use bon::Builder;
@@ -40,6 +43,12 @@ impl Vinted {
                 bail!("failed to refresh the authentication token: {error:#}");
             }
         }
+    }
+}
+
+impl Display for Vinted {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Vinted")
     }
 }
 
@@ -96,7 +105,6 @@ impl Marketplace for Vinted {
             n_fetched = n_fetched,
             n_filtered = items.len(),
         );
-        self.check_in().await;
         Ok(items)
     }
 }

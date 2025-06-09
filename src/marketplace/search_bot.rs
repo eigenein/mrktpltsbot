@@ -7,7 +7,7 @@ use tokio::time::sleep;
 use crate::{
     db,
     db::{Db, Item, Items, Notifications, SearchQuery, Subscription},
-    marketplace::{Marketplace, marktplaats::Marktplaats, vinted::Vinted},
+    marketplace::Marketplaces,
     prelude::*,
     telegram::{
         Telegram,
@@ -32,11 +32,7 @@ pub struct SearchBot {
     /// Telegram connection.
     telegram: Telegram,
 
-    /// Marktplaats connection.
-    marktplaats: Marktplaats,
-
-    /// Vinted connection.
-    vinted: Vinted,
+    marketplaces: Marketplaces,
 }
 
 impl SearchBot {
@@ -58,6 +54,7 @@ impl SearchBot {
                     previous = handled;
                 }
                 Err(error) => {
+                    log::error!("‼️ Error: {error:#}");
                     capture_anyhow(&error);
                 }
             }
@@ -86,8 +83,7 @@ impl SearchBot {
             Ok(current)
         } else {
             info!("📭 No active subscriptions");
-            self.marktplaats.check_in().await;
-            self.vinted.check_in().await;
+            self.marketplaces.check_in().await;
             Ok(None)
         }
     }
@@ -109,11 +105,9 @@ impl SearchBot {
     ) -> Result {
         let unsubscribe_link = self.command_builder.unsubscribe_link(search_query.hash);
 
-        let mut items = Vec::new();
-        self.marktplaats.search_and_extend_infallible(search_query, None, &mut items).await;
-        self.vinted.search_and_extend_infallible(search_query, None, &mut items).await;
-
+        let items = self.marketplaces.search_infallible(search_query, None).await;
         info!("🛍️ Fetched items from all marketplaces", n_items = items.len());
+
         for item in items {
             let mut connection = self.db.connection().await;
             Items(&mut connection).upsert(Item { id: &item.id, updated_at: Utc::now() }).await?;
@@ -147,6 +141,7 @@ impl SearchBot {
                     Notifications(&mut connection).upsert(&notification).await?;
                 }
                 Err(error) => {
+                    log::error!("‼️ Error: {error:#}");
                     capture_anyhow(&error);
                 }
             }

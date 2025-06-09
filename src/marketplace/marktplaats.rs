@@ -1,6 +1,8 @@
 mod client;
 mod listing;
 
+use std::fmt::{Display, Formatter};
+
 use async_trait::async_trait;
 use bon::Builder;
 
@@ -20,6 +22,12 @@ pub struct Marktplaats {
     search_limit: u32,
     heartbeat: Heartbeat,
     search_in_title_and_description: bool,
+}
+
+impl Display for Marktplaats {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Marktplaats")
+    }
 }
 
 #[async_trait]
@@ -54,7 +62,6 @@ impl Marketplace for Marktplaats {
             n_fetched = n_fetched,
             n_filtered = items.len(),
         );
-        self.check_in().await;
         Ok(items)
     }
 }

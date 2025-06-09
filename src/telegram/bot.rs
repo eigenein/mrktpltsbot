@@ -6,7 +6,7 @@ use maud::{Render, html};
 use crate::{
     db::{Db, SearchQueries, SearchQuery, Subscription, Subscriptions},
     heartbeat::Heartbeat,
-    marketplace::{Marketplace, Marktplaats, Vinted},
+    marketplace::Marketplaces,
     prelude::*,
     telegram::{
         Telegram,
@@ -42,8 +42,7 @@ pub struct Bot {
     telegram: Telegram,
     authorized_chat_ids: HashSet<i64>,
     db: Db,
-    marktplaats: Marktplaats,
-    vinted: Vinted,
+    marketplaces: Marketplaces,
     poll_timeout_secs: u64,
     heartbeat: Heartbeat,
     command_builder: CommandBuilder,
@@ -56,8 +55,7 @@ impl Bot {
         telegram: Telegram,
         command_builder: CommandBuilder,
         db: Db,
-        marktplaats: Marktplaats,
-        vinted: Vinted,
+        marketplaces: Marketplaces,
         heartbeat: Heartbeat,
         authorized_chat_ids: HashSet<i64>,
         poll_timeout_secs: u64,
@@ -81,8 +79,7 @@ impl Bot {
             telegram,
             authorized_chat_ids,
             db,
-            marktplaats,
-            vinted,
+            marketplaces,
             poll_timeout_secs,
             heartbeat,
             command_builder,
@@ -123,6 +120,7 @@ impl Bot {
                 updates
             }
             Err(error) => {
+                log::error!("‼️ {error:#}");
                 capture_anyhow(&error);
                 return offset;
             }
@@ -153,6 +151,7 @@ impl Bot {
                     format!("failed to handle the message #{} from chat #{chat_id}", message.id)
                 })
             {
+                log::error!("‼️ Error: {error:#}");
                 let error_id = capture_anyhow(&error);
                 let _ = SendMessage::builder()
                     .chat_id(Cow::Owned(ChatId::Integer(chat_id)))
@@ -198,6 +197,11 @@ impl Bot {
     /// Handle the search request from Telegram.
     ///
     /// A search request is just a message that is not a command.
+    #[instrument(
+        name = "❕ Handling the search command…",
+        skip_all,
+        fields(query = query, chat_id = chat_id),
+    )]
     async fn on_search(
         &self,
         query: &str,
@@ -206,10 +210,13 @@ impl Bot {
     ) -> Result {
         let query = SearchQuery::from(query);
 
-        let mut items = Vec::new();
-        self.marktplaats.search_and_extend_infallible(&query, Some(1), &mut items).await;
-        self.vinted.search_and_extend_infallible(&query, Some(1), &mut items).await;
-        info!("🛍️", query.hash = query.hash, n_items = items.len(), query.text = &query.text);
+        let items = self.marketplaces.search_infallible(&query, Some(1)).await;
+        info!(
+            "🛍️ Fetched from all marketplaces",
+            query.hash = query.hash,
+            n_items = items.len(),
+            query.text = &query.text,
+        );
 
         SearchQueries(&mut *self.db.connection().await).upsert(&query).await?;
 
