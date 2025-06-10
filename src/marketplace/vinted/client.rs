@@ -6,6 +6,7 @@ use url::Url;
 
 use crate::{
     db::KeyedMessage,
+    logging::Breadcrumb,
     marketplace::vinted::{
         VintedError,
         search::{SearchRequest, SearchResults},
@@ -53,6 +54,13 @@ impl VintedClient {
             url.set_query(Some(&query));
             url
         };
+        Breadcrumb::debug()
+            .category(module_path!())
+            .message("Searching on Vinted…")
+            .data("url", url.as_str())
+            .data("access_token", access_token)
+            .build()
+            .add();
         let response = self
             .0
             .get(url)
@@ -65,12 +73,14 @@ impl VintedClient {
             // FIXME: not sure about 403.
             return Err(VintedError::Reauthenticate);
         }
-        let search_results = response
-            .error_for_status()?
-            .json()
-            .await
-            .context("failed to deserialize search results")?;
-        Ok(search_results)
+        let response = response.error_for_status()?.text().await?;
+        Breadcrumb::debug()
+            .category(module_path!())
+            .message("Parsing response…")
+            .data("response.body", response.as_str())
+            .build()
+            .add();
+        Ok(serde_json::from_str(&response).context("failed to deserialize search results")?)
     }
 }
 

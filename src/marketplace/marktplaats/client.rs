@@ -3,7 +3,7 @@ use reqwest_middleware::ClientWithMiddleware;
 use serde::Serialize;
 use url::Url;
 
-use crate::{marketplace::marktplaats::Listings, prelude::*};
+use crate::{logging::Breadcrumb, marketplace::marktplaats::Listings, prelude::*};
 
 #[must_use]
 #[derive(Clone)]
@@ -19,7 +19,29 @@ impl MarktplaatsClient {
             url.set_query(Some(&query));
             url
         };
-        self.0.get(url).send().await?.error_for_status()?.json().await.context("failed to search")
+        Breadcrumb::debug()
+            .category(module_path!())
+            .message("Searching on Marktplaats…")
+            .data("url", url.as_str())
+            .build()
+            .add();
+        let response = self
+            .0
+            .get(url)
+            .send()
+            .await
+            .context("failed to search")?
+            .error_for_status()
+            .context("the search call failed")?
+            .text()
+            .await?;
+        Breadcrumb::debug()
+            .category(module_path!())
+            .message("Parsing response…")
+            .data("response.body", response.as_str())
+            .build()
+            .add();
+        serde_json::from_str(&response).context("failed to deserialize the response")
     }
 }
 

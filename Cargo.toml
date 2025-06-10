@@ -9,7 +9,7 @@ license = "MIT"
 publish = true
 readme = "README.md"
 repository = "https://github.com/eigenein/mrktpltsbot"
-version = "2.1.0-rc.27"
+version = "2.1.0-rc.28"
 rust-version = "1.86"
 
 [badges]
@@ -42,7 +42,7 @@ significant_drop_tightening = "allow"
 anyhow = { version = "=1.0.98", features = ["backtrace"] }
 async-trait = "=0.1.88"
 base64-url = "=3.0.0"
-bon = "=3.6.4"
+bon = { version = "=3.6.4", features = ["implied-bounds"] }
 chrono = "=0.4.41"
 clap = { version = "=4.5.40", features = ["cargo", "derive", "env", "unicode"] }
 deunicode = "1.6.2"
