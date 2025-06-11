@@ -22,7 +22,6 @@ impl Logging {
         let sentry_guard = sentry::init(ClientOptions {
             dsn: sentry_dsn.into_dsn()?,
             attach_stacktrace: true,
-            trim_backtraces: false,
             in_app_include: vec![crate_name!()],
             release: Some(Cow::Borrowed(crate_version!())),
             send_default_pii: true,
