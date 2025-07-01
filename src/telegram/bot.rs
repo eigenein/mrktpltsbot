@@ -259,6 +259,7 @@ impl Bot {
         Ok(())
     }
 
+    #[allow(clippy::cognitive_complexity)]
     async fn on_command(
         &self,
         text: &str,

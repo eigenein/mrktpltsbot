@@ -10,7 +10,7 @@ publish = true
 readme = "README.md"
 repository = "https://github.com/eigenein/mrktpltsbot"
 version = "2.1.0-rc.29"
-rust-version = "1.86"
+rust-version = "1.88"
 
 [badges]
 is-it-maintained-issue-resolution = { repository = "eigenein/mrktpltsbot" }
