@@ -52,7 +52,7 @@ itertools = "=0.14.0"
 log = "=0.4.27"
 logfire = "=0.6.1"
 maud = "=0.27.0"
-monostate = "=0.1.14"
+monostate = "=1.0.1"
 reqwest = { version = "=0.12.22", default-features = false, features = ["cookies", "gzip", "http2", "json", "rustls-tls"] }
 reqwest-middleware = { version = "=0.4.2", features = ["http2", "json", "rustls-tls"] }
 prost = "=0.14.1"
