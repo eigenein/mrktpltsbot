@@ -37,7 +37,7 @@ mod telegram;
 fn main() -> Result {
     let dotenv_result = dotenvy::dotenv();
     let cli = Args::parse();
-    let logging = Logging::init(cli.sentry_dsn.as_deref())?;
+    let _logging = Logging::init(cli.sentry_dsn.as_deref())?;
     if let Err(error) = dotenv_result {
         log::warn!("⚠️ Could not load `.env`: {error:#}");
     }
@@ -47,8 +47,7 @@ fn main() -> Result {
         .block_on(async_main(cli))
         .inspect_err(|error| {
             capture_anyhow(error);
-        })?;
-    logging.try_shutdown()
+        })
 }
 
 async fn async_main(cli: Args) -> Result {

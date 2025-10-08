@@ -48,7 +48,7 @@ impl Db {
     }
 
     /// Lock and return the connection.
-    pub async fn connection(&self) -> MutexGuard<SqliteConnection> {
+    pub async fn connection(&self) -> MutexGuard<'_, SqliteConnection> {
         self.0.lock().await
     }
 

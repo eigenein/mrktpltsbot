@@ -29,7 +29,7 @@ impl<S: AsRef<str>> From<S> for SearchQuery {
 }
 
 impl SearchQuery {
-    pub fn to_normalised_query(&self) -> Cow<NormalisedQuery> {
+    pub fn to_normalised_query(&self) -> Cow<'_, NormalisedQuery> {
         Cow::Owned(NormalisedQuery::parse(&self.text))
     }
 }

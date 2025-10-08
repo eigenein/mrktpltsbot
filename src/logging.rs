@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::BTreeMap};
 
 use bon::{Builder, builder};
 use clap::{crate_name, crate_version};
-use logfire::{ShutdownHandler, config::SendToLogfire};
+use logfire::{Logfire, config::SendToLogfire};
 use sentry::{ClientInitGuard, ClientOptions, IntoDsn, Level, SessionMode};
 use serde_json::Value;
 use tracing::level_filters::LevelFilter;
@@ -14,7 +14,8 @@ pub struct Logging {
     #[expect(dead_code)]
     sentry_guard: ClientInitGuard,
 
-    logfire_handler: ShutdownHandler,
+    #[expect(dead_code)]
+    logfire_guard: Logfire,
 }
 
 impl Logging {
@@ -30,8 +31,7 @@ impl Logging {
             ..Default::default()
         });
 
-        let logfire_handler = logfire::configure()
-            .install_panic_handler()
+        let logfire_guard = logfire::configure()
             .with_default_level_filter(LevelFilter::INFO)
             .send_to_logfire(SendToLogfire::IfTokenPresent)
             .finish()?;
@@ -40,12 +40,7 @@ impl Logging {
             warn!("⚠️ Sentry is not configured");
         }
 
-        Ok(Self { sentry_guard, logfire_handler })
-    }
-
-    pub fn try_shutdown(self) -> Result {
-        self.logfire_handler.shutdown()?;
-        Ok(())
+        Ok(Self { sentry_guard, logfire_guard })
     }
 }
 

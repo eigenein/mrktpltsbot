@@ -1558,9 +1558,9 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "logfire"
-version = "0.6.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55ae2fd2fea6efbfda72abefee688ebe50d6818d6b99fed8c2890f4d7a44c811"
+checksum = "ecdeef502337c0cb7ab6646e79a8198aedddbbaa6351b6f9a2ccfb1bb0ed2cf7"
 dependencies = [
  "chrono",
  "env_filter",
@@ -1572,7 +1572,10 @@ dependencies = [
  "opentelemetry_sdk",
  "rand 0.9.1",
  "regex",
+ "serde",
+ "serde_json",
  "thiserror 2.0.12",
+ "tokio",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
@@ -1660,19 +1663,20 @@ dependencies = [
 
 [[package]]
 name = "monostate"
-version = "0.1.14"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aafe1be9d0c75642e3e50fedc7ecadf1ef1cbce6eb66462153fc44245343fbee"
+checksum = "a7b12ad0340d0817ba9e577eea7649bae0032ae985f197707f05e2610d4d173a"
 dependencies = [
  "monostate-impl",
  "serde",
+ "serde_core",
 ]
 
 [[package]]
 name = "monostate-impl"
-version = "0.1.14"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c402a4092d5e204f32c9e155431046831fa712637043c58cb73bc6bc6c9663b5"
+checksum = "16f00d5ea8bf717366e20bbdc17f3fe611b833ff9aa554fb614913b0dac54d77"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1681,7 +1685,7 @@ dependencies = [
 
 [[package]]
 name = "mrktpltsbot"
-version = "2.1.0-rc.29"
+version = "2.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1882,7 +1886,10 @@ dependencies = [
  "opentelemetry",
  "percent-encoding",
  "rand 0.9.1",
+ "serde_json",
  "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -2800,18 +2807,28 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.219"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6"
+checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
+dependencies = [
+ "serde_core",
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_core"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41d385c7d4ca58e59fc732af25c3983b67ac852c1a25000afe1175de458b67ad"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.219"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b0276cf7f2c73365f7157c8123c21cd9a50fbbd844757af28ca1f5925fc2a00"
+checksum = "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79"
 dependencies = [
  "proc-macro2",
  "quote",
