@@ -60,20 +60,29 @@ mod tests {
     use std::path::Path;
 
     use super::*;
-    use crate::{db::Db, marketplace::VintedAuthenticationTokens};
+    use crate::db::Db;
 
     #[tokio::test]
     async fn crud_ok() -> Result {
+        #[derive(PartialEq, Eq, Message)]
+        struct Value {
+            #[prost(tag = "1", int32)]
+            pub foo: i32,
+        }
+
+        impl KeyedMessage for Value {
+            const KEY: &'static str = "test";
+        }
+
         let db = Db::try_new(Path::new(":memory:")).await?;
         let mut connection = db.connection().await;
         let mut key_values = KeyValues(&mut connection);
 
-        assert!(key_values.fetch::<VintedAuthenticationTokens>().await?.is_none());
+        assert!(key_values.fetch::<Value>().await?.is_none());
 
-        let tokens =
-            VintedAuthenticationTokens::builder().access("access").refresh("refresh").build();
-        key_values.upsert(&tokens).await?;
-        assert_eq!(key_values.fetch().await?, Some(tokens));
+        let value = Value { foo: 42 };
+        key_values.upsert(&value).await?;
+        assert_eq!(key_values.fetch().await?, Some(value));
 
         Ok(())
     }

@@ -4,18 +4,15 @@ pub mod item;
 mod marktplaats;
 mod search;
 mod search_bot;
-mod vinted;
 
 use std::fmt::Display;
 
 use async_trait::async_trait;
-use tokio::join;
 
 pub use self::{
     marktplaats::{Marktplaats, MarktplaatsClient},
     search::NormalisedQuery,
     search_bot::SearchBot,
-    vinted::{AuthenticationTokens as VintedAuthenticationTokens, Vinted, VintedClient},
 };
 use crate::{db::SearchQuery, marketplace::item::Item, prelude::*};
 
@@ -51,13 +48,11 @@ pub trait Marketplace: Display {
 #[derive(Clone)]
 pub struct Marketplaces {
     pub marktplaats: Marktplaats,
-    pub vinted: Vinted,
 }
 
 impl Marketplaces {
     pub async fn check_in(&self) {
         self.marktplaats.check_in().await;
-        self.vinted.check_in().await;
     }
 
     pub async fn search_infallible(
@@ -65,11 +60,6 @@ impl Marketplaces {
         query: &SearchQuery,
         marketplace_limit: Option<usize>,
     ) -> Vec<Item> {
-        let (mut items_1, items_2) = join!(
-            self.marktplaats.search_infallible(query, marketplace_limit),
-            self.vinted.search_infallible(query, marketplace_limit)
-        );
-        items_1.extend(items_2);
-        items_1
+        self.marktplaats.search_infallible(query, marketplace_limit).await
     }
 }

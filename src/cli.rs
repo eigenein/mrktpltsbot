@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use secrecy::SecretString;
 use url::Url;
 
 #[derive(Parser)]
@@ -32,12 +31,6 @@ pub struct Args {
 pub enum Command {
     /// Run the bot indefinitely.
     Run(Box<RunArgs>),
-
-    /// Manage Vinted settings.
-    Vinted {
-        #[command(subcommand)]
-        command: VintedCommand,
-    },
 }
 
 #[derive(Parser)]
@@ -56,23 +49,6 @@ pub struct RunArgs {
 
     #[command(flatten)]
     pub marktplaats: MarktplaatsArgs,
-
-    #[command(flatten)]
-    pub vinted: VintedArgs,
-}
-
-#[derive(Subcommand)]
-pub enum VintedCommand {
-    /// Validate and store the refresh token.
-    #[clap(visible_alias = "auth")]
-    Authenticate {
-        /// Vinted refresh token.
-        refresh_token: SecretString,
-    },
-
-    /// Print the stored authentication tokens.
-    #[clap(visible_alias = "tokens")]
-    ShowTokens,
 }
 
 #[derive(Parser)]
@@ -103,28 +79,6 @@ pub struct MarktplaatsArgs {
         hide_env_values = true
     )]
     pub search_in_title_and_description: bool,
-}
-
-#[derive(Parser)]
-#[clap(next_help_heading = "Vinted")]
-pub struct VintedArgs {
-    /// Limit of Vinted search results per query.
-    #[clap(
-        long = "vinted-search-limit",
-        env = "VINTED_SEARCH_LIMIT",
-        default_value = "10",
-        hide_env_values = true
-    )]
-    pub vinted_search_limit: u32,
-
-    /// Heartbeat URL for the Vinted connection.
-    #[clap(
-        long = "vinted-heartbeat-url",
-        env = "VINTED_HEARTBEAT_URL",
-        id = "vinted_heartbeat_url",
-        hide_env_values = true
-    )]
-    pub heartbeat_url: Option<Url>,
 }
 
 #[derive(Parser)]

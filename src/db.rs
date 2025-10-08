@@ -19,7 +19,6 @@ use tokio::sync::{Mutex, MutexGuard};
 
 pub use self::{
     item::{Item, Items},
-    key_values::{KeyValues, KeyedMessage},
     notification::{Notification, Notifications},
     search_query::{SearchQueries, SearchQuery},
     subscription::{Subscription, Subscriptions},

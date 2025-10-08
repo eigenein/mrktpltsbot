@@ -4,22 +4,13 @@ use std::time::Duration;
 
 use clap::Parser;
 use reqwest_middleware::ClientWithMiddleware;
-use secrecy::ExposeSecret;
 
 use crate::{
-    cli::{Args, Command, RunArgs, VintedCommand},
-    db::{Db, KeyValues},
+    cli::{Args, Command, RunArgs},
+    db::Db,
     heartbeat::Heartbeat,
     logging::Logging,
-    marketplace::{
-        Marketplaces,
-        Marktplaats,
-        MarktplaatsClient,
-        SearchBot,
-        Vinted,
-        VintedAuthenticationTokens,
-        VintedClient,
-    },
+    marketplace::{Marketplaces, Marktplaats, MarktplaatsClient, SearchBot},
     prelude::*,
     telegram::{Telegram, TelegramBot},
 };
@@ -55,7 +46,6 @@ async fn async_main(cli: Args) -> Result {
     let client = client::try_new(cli.trace_requests)?;
     match cli.command {
         Command::Run(args) => run(db, client, *args).await,
-        Command::Vinted { command } => manage_vinted(db, client, command).await,
     }
 }
 
@@ -72,15 +62,7 @@ async fn run(db: Db, client: ClientWithMiddleware, args: RunArgs) -> Result {
         .heartbeat(Heartbeat::new(client.clone(), args.marktplaats.heartbeat_url))
         .build();
 
-    // Vinted connection:
-    let vinted = Vinted::builder()
-        .client(VintedClient(client.clone()))
-        .search_limit(args.vinted.vinted_search_limit)
-        .db(db.clone())
-        .heartbeat(Heartbeat::new(client.clone(), args.vinted.heartbeat_url))
-        .build();
-
-    let marketplaces = Marketplaces { marktplaats, vinted };
+    let marketplaces = Marketplaces { marktplaats };
 
     // Telegram bot:
     let telegram_bot = TelegramBot::builder()
@@ -105,30 +87,5 @@ async fn run(db: Db, client: ClientWithMiddleware, args: RunArgs) -> Result {
 
     // Run the bots:
     tokio::try_join!(tokio::spawn(telegram_bot.run()), tokio::spawn(search_bot.run()))?;
-    Ok(())
-}
-
-/// Manage Vinted settings.
-async fn manage_vinted(db: Db, client: ClientWithMiddleware, command: VintedCommand) -> Result {
-    match command {
-        VintedCommand::Authenticate { refresh_token } => {
-            let tokens = VintedClient(client).refresh_token(refresh_token.expose_secret()).await?;
-            KeyValues(&mut *db.connection().await).upsert(&tokens).await?;
-            info!("✅ Succeeded, now the bot will search on Vinted as well");
-        }
-
-        VintedCommand::ShowTokens => {
-            let tokens: Option<VintedAuthenticationTokens> =
-                KeyValues(&mut *db.connection().await).fetch().await?;
-            match tokens {
-                Some(tokens) => {
-                    info!("🔑", tokens.access = tokens.access, tokens.refresh = tokens.refresh);
-                }
-                None => {
-                    info!("🔒 There are no stored tokens");
-                }
-            }
-        }
-    }
     Ok(())
 }
