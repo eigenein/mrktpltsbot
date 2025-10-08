@@ -2,8 +2,11 @@ use std::{borrow::Cow, collections::BTreeMap};
 
 use bon::{Builder, builder};
 use clap::{crate_name, crate_version};
-use logfire::{Logfire, config::SendToLogfire};
-use sentry::{ClientInitGuard, ClientOptions, IntoDsn, Level, SessionMode};
+use logfire::{
+    ShutdownGuard,
+    config::{ConsoleOptions, SendToLogfire},
+};
+use sentry::{ClientInitGuard, ClientOptions, IntoDsn, SessionMode};
 use serde_json::Value;
 use tracing::level_filters::LevelFilter;
 
@@ -15,7 +18,7 @@ pub struct Logging {
     sentry_guard: ClientInitGuard,
 
     #[expect(dead_code)]
-    logfire_guard: Logfire,
+    logfire_guard: ShutdownGuard,
 }
 
 impl Logging {
@@ -33,8 +36,14 @@ impl Logging {
 
         let logfire_guard = logfire::configure()
             .with_default_level_filter(LevelFilter::INFO)
+            .with_console(Some(
+                ConsoleOptions::default()
+                    .with_min_log_level(Level::INFO) // doesn't seem to work
+                    .with_include_timestamps(false),
+            ))
             .send_to_logfire(SendToLogfire::IfTokenPresent)
-            .finish()?;
+            .finish()?
+            .shutdown_guard();
 
         if !sentry_guard.is_enabled() {
             warn!("⚠️ Sentry is not configured");
@@ -51,7 +60,7 @@ pub struct Breadcrumb {
     ///
     /// The level is set to one of five values: `fatal`, `error`, `warning`, `info`, and `debug`, in order of severity.
     #[builder(start_fn)]
-    level: Level,
+    level: sentry::Level,
 
     /// A key-value mapping of a breadcrumb's arbitrary data.
     ///
@@ -81,7 +90,7 @@ impl<S: breadcrumb_builder::State> BreadcrumbBuilder<S> {
 
 impl Breadcrumb {
     pub fn debug() -> BreadcrumbBuilder {
-        Self::builder(Level::Debug)
+        Self::builder(sentry::Level::Debug)
     }
 
     pub fn add(self) {

@@ -1685,7 +1685,7 @@ dependencies = [
 
 [[package]]
 name = "mrktpltsbot"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "anyhow",
  "async-trait",
