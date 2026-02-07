@@ -1,4 +1,5 @@
 FROM gcr.io/distroless/cc-debian12
+ARG TARGETPLATFORM
 
 LABEL org.opencontainers.image.description="Self-hosted Marktplaats notifications for Telegram"
 LABEL org.opencontainers.image.authors="eigenein"
@@ -9,4 +10,4 @@ WORKDIR /data
 
 ENTRYPOINT ["/mrktpltsbot"]
 
-ADD mrktpltsbot /
+ADD $TARGETPLATFORM/mrktpltsbot /

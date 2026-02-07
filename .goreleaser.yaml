@@ -3,53 +3,39 @@
 version: 2
 
 builds:
-  - builder: rust
+  - builder: "rust"
+    id: "mrktpltsbot"
+    binary: "mrktpltsbot"
     flags:
-      - --release
+      - "--release"
+      - "-p=mrktpltsbot"
     targets:
-      # FIXME: - x86_64-unknown-linux-gnu
-      # FIXME: - x86_64-apple-darwin
-      # FIXME: - x86_64-pc-windows-gnu
-      - aarch64-unknown-linux-gnu
-      # FIXME: - aarch64-apple-darwin
+      - "aarch64-unknown-linux-gnu"
 
-signs:
-  - cmd: cosign
-    certificate: "${artifact}.pem"
-    artifacts: checksum
-    args:
-      - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
-      - "${artifact}"
-      - "--yes"
+source:
+  enabled: false
 
-dockers:
-  - image_templates:
-      - "ghcr.io/eigenein/mrktpltsbot:{{ .Tag }}-arm64"
-    goarch: arm64
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-
-docker_manifests:
-  - name_template: "ghcr.io/eigenein/mrktpltsbot:{{ .Tag }}"
-    image_templates:
-      - "ghcr.io/eigenein/mrktpltsbot:{{ .Tag }}-arm64"
+dockers_v2:
+  - ids:
+      - "mrktpltsbot"
+    platforms:
+      - "linux/arm64"
+    images:
+      - "ghcr.io/eigenein/mrktpltsbot"
+    tags:
+      - "latest"
+      - "{{ .Version }}"
+    labels:
+      "org.opencontainers.image.created": "{{ .Date }}"
+      "org.opencontainers.image.name": "{{ .ProjectName }}"
+      "org.opencontainers.image.revision": "{{ .FullCommit }}"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "{{ .GitURL }}"
 
 docker_signs:
-  - cmd: cosign
-    artifacts: manifests
+  - cmd: "cosign"
     args:
       - "sign"
       - "${artifact}"
       - "--yes"
-
-changelog:
-  sort: asc
+    artifacts: "all"
