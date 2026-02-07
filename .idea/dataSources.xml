@@ -10,11 +10,6 @@
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
       </jdbc-additional-properties>
       <working-dir>$ProjectFileDir$</working-dir>
-      <libraries>
-        <library>
-          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.25.1/sqlite-jdbc-3.25.1.jar</url>
-        </library>
-      </libraries>
     </data-source>
     <data-source source="LOCAL" name="Production" uuid="e03b3a91-465c-43bc-8535-e4d841c9632e">
       <driver-ref>sqlite.xerial</driver-ref>

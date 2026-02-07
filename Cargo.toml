@@ -9,8 +9,8 @@ license = "MIT"
 publish = true
 readme = "README.md"
 repository = "https://github.com/eigenein/mrktpltsbot"
-version = "2.1.2"
-rust-version = "1.90"
+version = "2.1.3"
+rust-version = "1.93"
 
 [badges]
 is-it-maintained-issue-resolution = { repository = "eigenein/mrktpltsbot" }

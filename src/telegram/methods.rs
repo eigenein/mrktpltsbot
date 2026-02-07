@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Debug, time::Duration};
 
-use bon::{Builder, builder};
+use bon::Builder;
 use serde::{
     Serialize,
     de::{DeserializeOwned, IgnoredAny},

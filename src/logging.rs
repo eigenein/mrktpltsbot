@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::BTreeMap};
 
-use bon::{Builder, builder};
+use bon::Builder;
 use clap::{crate_name, crate_version};
 use logfire::{
     ShutdownGuard,
@@ -29,6 +29,7 @@ impl Logging {
             in_app_include: vec![crate_name!()],
             release: Some(Cow::Borrowed(crate_version!())),
             send_default_pii: true,
+            auto_session_tracking: true,
             session_mode: SessionMode::Application,
             traces_sample_rate: 1.0,
             ..Default::default()
