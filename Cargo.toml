@@ -39,34 +39,34 @@ module_name_repetitions = "allow"
 significant_drop_tightening = "allow"
 
 [dependencies]
-anyhow = { version = "=1.0.98", features = ["backtrace"] }
-async-trait = "=0.1.88"
-base64-url = "=3.0.0"
-bon = { version = "=3.6.4", features = ["implied-bounds"] }
-chrono = "=0.4.41"
-clap = { version = "=4.5.40", features = ["cargo", "derive", "env", "unicode"] }
+anyhow = { version = "=1.0.102", features = ["backtrace"] }
+async-trait = "=0.1.89"
+base64-url = "=3.0.2"
+bon = { version = "=3.9.0", features = ["implied-bounds"] }
+chrono = "=0.4.43"
+clap = { version = "=4.5.60", features = ["cargo", "derive", "env", "unicode"] }
 deunicode = "=1.6.2"
 dotenvy = "=0.15.7"
-http = "=1.3.1"
+http = "=1.4.0"
 itertools = "=0.14.0"
-log = "=0.4.27"
-logfire = "=0.8.2"
+log = "=0.4.29"
+logfire = "=0.9.0"
 maud = "=0.27.0"
-monostate = "=1.0.1"
-reqwest = { version = "=0.12.22", default-features = false, features = ["cookies", "gzip", "http2", "json", "rustls-tls"] }
-reqwest-middleware = { version = "=0.4.2", features = ["http2", "json", "rustls-tls"] }
-prost = "=0.14.1"
-rust_decimal = "=1.37.2"
-rust_decimal_macros = "=1.37.1"
+monostate = "=1.0.2"
+reqwest = { version = "=0.13.2", default-features = false, features = ["cookies", "gzip", "http2", "json", "rustls-tls"] }
+reqwest-middleware = { version = "=0.5.1", features = ["http2", "json", "rustls-tls"] }
+prost = "=0.14.3"
+rust_decimal = "=1.40.0"
+rust_decimal_macros = "=1.40.0"
 seahash = "=4.1.0"
 secrecy = { version = "=0.10.3", features = ["serde"] }
-sentry = { version = "=0.41.0", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "release-health", "rustls"] }
+sentry = { version = "=0.46.2", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "release-health", "rustls"] }
 serde = "=1.0.228"
-serde_json = "=1.0.140"
+serde_json = "=1.0.149"
 serde_qs = "=0.15.0"
 sqlx = { version = "=0.8.6", features = ["chrono", "migrate", "runtime-tokio", "sqlite"] }
 sqlx-sqlite = "=0.8.6"
-thiserror = "=2.0.12"
-tokio = { version = "=1.46.1", features = ["macros", "rt-multi-thread", "time"] }
-tracing = "=0.1.41"
-url = "=2.5.4"
+thiserror = "=2.0.18"
+tokio = { version = "=1.49.0", features = ["macros", "rt-multi-thread", "time"] }
+tracing = "=0.1.44"
+url = "=2.5.8"
