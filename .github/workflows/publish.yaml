@@ -39,7 +39,7 @@ jobs:
         with:
           tool: cargo-zigbuild
 
-      - uses: sigstore/cosign-installer@v4.0.0
+      - uses: sigstore/cosign-installer@v4.1.0
         name: ✏️ Set up Cosign
 
       - name: 🐬 Set up QEMU
