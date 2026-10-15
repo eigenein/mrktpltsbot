@@ -1,4 +1,5 @@
 .env
+.zig-cache
 *.sqlite3*
 
 # Added by goreleaser init:
